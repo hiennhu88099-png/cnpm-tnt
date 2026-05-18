@@ -8,6 +8,8 @@ import 'tarot_screen.dart';
 import 'journal_screen.dart';
 import 'connect_screen.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     TarotScreen(),
     JournalScreen(),
     ConnectScreen(),
-    ProfileScreen(),
+    ChatScreen(),
   ];
 
   @override
@@ -117,7 +119,7 @@ class _DashboardTabState extends State<_DashboardTab> {
                     ),
                     const SizedBox(height: 12),
                     Text('Chào $displayName,',
-                        style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                        style: GoogleFonts.lora(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                     const SizedBox(height: 4),
                     Text('Vũ trụ đang gửi năng lượng gì đến bạn?',
                         style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
@@ -160,7 +162,7 @@ class _DashboardTabState extends State<_DashboardTab> {
                 const SizedBox(height: 12),
                 Text(
                   '"Những gì bạn đang tìm kiếm cũng đang trên đường tìm kiếm bạn. Hãy giữ tần số rung động của mình thật cao."',
-                  style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 16, height: 1.6, fontStyle: FontStyle.italic),
+                  style: GoogleFonts.lora(color: Colors.white, fontSize: 16, height: 1.6, fontStyle: FontStyle.italic),
                 ),
               ],
             ),
@@ -205,7 +207,7 @@ class _DashboardTabState extends State<_DashboardTab> {
                     child: const Text('NỔI BẬT', style: TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ),
                   const SizedBox(height: 12),
-                  Text('Trải bài & Bản đồ Vũ Trụ', style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text('Trải bài & Bản đồ Vũ Trụ', style: GoogleFonts.lora(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 6),
                   Text('Khám phá thông điệp sâu sắc từ vũ trụ và các vì sao dành riêng cho bạn.',
                     style: TextStyle(color: Colors.white.withOpacity(0.8), height: 1.4, fontSize: 12)),
@@ -422,7 +424,7 @@ class _BottomNav extends StatelessWidget {
       (Icons.auto_awesome_rounded, 'Tarot'),
       (Icons.book_outlined, 'Nhật ký'),
       (Icons.people_outline_rounded, 'Kết nối'),
-      (Icons.person_outline_rounded, 'Hồ sơ'),
+      (Icons.chat_bubble_outline_rounded, 'AI Guide'),
     ];
 
     return Container(

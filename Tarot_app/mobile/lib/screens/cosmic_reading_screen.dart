@@ -179,7 +179,7 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('🌌 Bản Đồ Vũ Trụ',
-              style: GoogleFonts.playfairDisplay(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
+              style: GoogleFonts.lora(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 6),
           Text('Kết hợp Tarot · Cung hoàng đạo · Số chủ đạo để phân tích con đường của bạn.',
               style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 13)),
@@ -224,7 +224,7 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
                   Text(_zodiacData[_zodiac!]!['emoji']!, style: const TextStyle(fontSize: 32)),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_zodiac!, style: GoogleFonts.playfairDisplay(color: const Color(0xFFC9A84C), fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(_zodiac!, style: GoogleFonts.lora(color: const Color(0xFFC9A84C), fontSize: 20, fontWeight: FontWeight.bold)),
                     Text(_zodiacData[_zodiac!]!['element']!, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
                   ])),
                   Container(
@@ -349,7 +349,7 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
           const Text('🔮', style: TextStyle(fontSize: 28)),
           const SizedBox(width: 10),
           Expanded(child: Text('Phân tích vũ trụ cho bạn',
-              style: GoogleFonts.playfairDisplay(color: const Color(0xFFC9A84C), fontSize: 16, fontWeight: FontWeight.bold))),
+              style: GoogleFonts.lora(color: const Color(0xFFC9A84C), fontSize: 16, fontWeight: FontWeight.bold))),
         ]),
         const SizedBox(height: 14),
 
@@ -371,7 +371,7 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
 
         // Card name
         Center(child: Text('✨ $_zodiac × $cardName ✨',
-            style: GoogleFonts.playfairDisplay(color: const Color(0xFFC9A84C), fontSize: 16, fontWeight: FontWeight.bold),
+            style: GoogleFonts.lora(color: const Color(0xFFC9A84C), fontSize: 16, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center)),
         const SizedBox(height: 14),
 

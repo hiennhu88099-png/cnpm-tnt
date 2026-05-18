@@ -77,14 +77,27 @@ const _fallbackCards = [
 // ─── Asset lookup map ────────────────────────────────────────────────────────
 const _assetMap = <String, String>{
   'the fool'           : 'the_fool',
+  'the magician'       : 'the_magician',
   'the high priestess' : 'the_high_priestess',
+  'the emperor'        : 'the_emperor',
+  'the hierophant'     : 'the_hierophant',
+  'the lovers'         : 'the_lovers',
+  'the chariot'        : 'the_chariot',
+  'strength'           : 'strength',
   'the moon'           : 'the_moon',
   'the star'           : 'the_star',
   'the sun'            : 'the_sun',
   'wheel of fortune'   : 'wheel_of_fortune',
-  // Vietnamese names
+  
+  // Vietnamese names fallback
   'kẻ khờ'            : 'the_fool',
+  'ảo thuật gia'      : 'the_magician',
   'nữ tư tế'          : 'the_high_priestess',
+  'hoàng đế'          : 'the_emperor',
+  'giáo hoàng'        : 'the_hierophant',
+  'tình nhân'         : 'the_lovers',
+  'chiến xa'          : 'the_chariot',
+  'sức mạnh'          : 'strength',
   'vầng trăng'        : 'the_moon',
   'ngôi sao'          : 'the_star',
   'mặt trời'          : 'the_sun',
@@ -283,7 +296,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
         children: [
           // ── Header ──────────────────────────────────────────────────────
           Text('✨ Tarot Thông Minh',
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.lora(
                   fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 6),
           Text('Bài Tarot được chọn dựa trên cảm xúc của bạn hôm nay.',
@@ -377,7 +390,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
                 const CircularProgressIndicator(color: Color(0xFFE86EAD)),
                 const SizedBox(height: 16),
                 Text('Vũ trụ đang lắng nghe bạn...',
-                    style: GoogleFonts.playfairDisplay(
+                    style: GoogleFonts.lora(
                         color: Colors.white70, fontSize: 16)),
               ]),
             ),
@@ -414,7 +427,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
           const Text('🔮', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 12),
           Text('Soul Mirror',
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.lora(
                   color: const Color(0xFFC9A84C), fontSize: 22)),
         ]),
       ),
@@ -471,7 +484,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
                             style: const TextStyle(fontSize: 72)),
                         const SizedBox(height: 12),
                         Text(name,
-                            style: GoogleFonts.playfairDisplay(
+                            style: GoogleFonts.lora(
                                 color: const Color(0xFFC9A84C),
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold),
@@ -485,7 +498,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
 
           // ── Card name ─────────────────────────────────────────────────
           Text(name,
-              style: GoogleFonts.playfairDisplay(
+              style: GoogleFonts.lora(
                   color: const Color(0xFFC9A84C),
                   fontSize: 20,
                   fontWeight: FontWeight.bold),
@@ -536,7 +549,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
               ),
             ),
             Text('Năng lượng của $name gửi đến bạn:',
-                style: GoogleFonts.playfairDisplay(
+                style: GoogleFonts.lora(
                     color: const Color(0xFFC9A84C),
                     fontWeight: FontWeight.bold,
                     fontSize: 15)),
@@ -611,7 +624,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
         backgroundColor: const Color(0xFF1A0A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('📓 Ghi vào nhật ký',
-            style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 18)),
+            style: GoogleFonts.lora(color: Colors.white, fontSize: 18)),
         content: SizedBox(
           width: 400,
           child: TextField(

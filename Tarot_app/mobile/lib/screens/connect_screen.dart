@@ -31,7 +31,7 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Kết nối', style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text('Kết nối', style: GoogleFonts.lora(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
               Text('Những tâm hồn đồng điệu xung quanh bạn.', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
               const SizedBox(height: 16),
               TabBar(
@@ -104,7 +104,7 @@ class _ConnectedTab extends StatelessWidget {
           children: [
             const Text('🌙', style: TextStyle(fontSize: 60)),
             const SizedBox(height: 20),
-            Text('Chưa có kết nối nào', style: GoogleFonts.playfairDisplay(color: Colors.white, fontSize: 20)),
+            Text('Chưa có kết nối nào', style: GoogleFonts.lora(color: Colors.white, fontSize: 20)),
             const SizedBox(height: 12),
             Text('Hãy khám phá và kết nối với những tâm hồn đồng điệu!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.5), height: 1.5)),
           ],

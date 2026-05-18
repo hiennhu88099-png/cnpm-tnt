@@ -47,7 +47,7 @@ class _JournalScreenState extends State<JournalScreen> {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Nhật ký', style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text('Nhật ký', style: GoogleFonts.lora(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
                   Text('Ghi lại hành trình nội tâm của bạn', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
                 ],
               )),
@@ -145,41 +145,65 @@ class _JournalCard extends StatelessWidget {
   final Map<String, dynamic> entry;
   const _JournalCard({required this.entry});
 
+  String _weekdayVi(int w) {
+    const days = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+    return days[w];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // extract basic info
-    final dt = DateTime.tryParse(entry['createdAt'] ?? '');
-    final dateStr = dt != null ? '${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}' : '--/--';
-    final content = entry['content'] ?? '';
-    final preview = content.length > 50 ? '${content.substring(0, 50)}...' : content;
-    final mood = entry['moodEmoji'] ?? '😌';
+    final dt = DateTime.tryParse(entry['createdAt'] ?? '')?.toLocal();
     final card = entry['tarotCardName'];
+    final content = (entry['content'] ?? '') as String;
+    final preview = content.length > 80 ? '${content.substring(0, 80)}...' : content;
+    final mood = entry['moodEmoji'] ?? '😌';
 
     return GlassPanel(
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(children: [
-            Text(mood, style: const TextStyle(fontSize: 26)),
-            const SizedBox(height: 4),
-            Text(dateStr, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-          ]),
-          const SizedBox(width: 16),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(preview, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4)),
-              if (card != null) ...[
-                const SizedBox(height: 6),
-                Row(children: [
-                  const Icon(Icons.auto_awesome, size: 12, color: Color(0xFFC9A84C)),
-                  const SizedBox(width: 4),
-                  Text(card, style: const TextStyle(color: Color(0xFFC9A84C), fontSize: 11)),
-                ]),
+          // Header: mood + date/time
+          Row(children: [
+            Text(mood, style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (dt != null) ...[
+                  Text(
+                    '${_weekdayVi(dt.weekday)}, ${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}/${dt.year}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  Text(
+                    '🕐 ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}',
+                    style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 11),
+                  ),
+                ] else
+                  Text('--/--/----', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
               ],
-            ],
-          )),
-          const Icon(Icons.chevron_right, color: Colors.white30),
+            )),
+            if (card != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFC9A84C).withOpacity(0.12),
+                  border: Border.all(color: const Color(0xFFC9A84C).withOpacity(0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.auto_awesome, size: 10, color: Color(0xFFC9A84C)),
+                  const SizedBox(width: 4),
+                  Text(card, style: const TextStyle(color: Color(0xFFC9A84C), fontSize: 10, fontWeight: FontWeight.w600)),
+                ]),
+              ),
+          ]),
+          if (preview.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Divider(color: Colors.white.withOpacity(0.07), height: 1),
+            const SizedBox(height: 10),
+            Text(preview, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13, height: 1.55)),
+          ],
         ],
       ),
     );
