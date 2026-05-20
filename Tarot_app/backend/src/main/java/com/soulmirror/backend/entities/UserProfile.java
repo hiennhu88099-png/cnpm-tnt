@@ -52,6 +52,13 @@ public class UserProfile {
 
     private boolean onboardingCompleted = false;
 
+    private String birthTime; // format: "HH:mm"
+
+    private String birthPlace; // e.g. "Hanoi, Vietnam"
+
+    @Column(columnDefinition = "TEXT")
+    private String natalChartJson; // Cache computed birth chart JSON
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/cosmic_widgets.dart';
+import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -28,30 +29,30 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _ctrl.clear();
 
-    // Giả lập độ trễ của AI để tạo cảm giác tự nhiên (ít tốn chi phí vì xử lý local/tĩnh trước khi tích hợp API thật)
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Build history string for Gemini context (keep last 6 messages)
+      final startIdx = _messages.length > 7 ? _messages.length - 7 : 0;
+      final historyList = _messages.sublist(startIdx, _messages.length - 1);
+      final historyStr = historyList.map((m) => "${m['role'] == 'user' ? 'User' : 'Cosmic Guide'}: ${m['text']}").join("\n");
 
-    final aiResponse = _generateEmpathicResponse(text);
-    
-    if (mounted) {
-      setState(() {
-        _isTyping = false;
-        _messages.add({'role': 'ai', 'text': aiResponse});
-      });
-    }
-  }
-
-  // Một hàm phân tích cảm xúc đơn giản (hoàn toàn miễn phí, chạy trên máy khách)
-  String _generateEmpathicResponse(String input) {
-    input = input.toLowerCase();
-    if (input.contains('buồn') || input.contains('mệt') || input.contains('chán')) {
-      return 'Mình cảm nhận được sự mệt mỏi trong lời nói của bạn. Vũ trụ luôn có chu kỳ của nó, và nỗi buồn này cũng chỉ là một đám mây bay ngang qua. Hãy cho phép bản thân được nghỉ ngơi nhé. Bạn không đơn độc đâu.';
-    } else if (input.contains('vui') || input.contains('hạnh phúc') || input.contains('tuyệt')) {
-      return 'Thật tuyệt vời! Năng lượng tích cực của bạn đang tỏa sáng rực rỡ. Hãy giữ gìn tần số rung động này và lan tỏa nó đến xung quanh nhé. Cảm ơn bạn đã chia sẻ niềm vui này với mình.';
-    } else if (input.contains('cô đơn') || input.contains('một mình')) {
-      return 'Sự tĩnh lặng đôi khi khiến ta cảm thấy trống vắng. Nhưng The Hermit trong Tarot dạy chúng ta rằng, sự cô độc chính là lúc để quay vào bên trong và thắp lên ánh sáng của riêng mình. Mình luôn ở đây lắng nghe bạn.';
-    } else {
-      return 'Mình hiểu những gì bạn đang trải qua. Dù chặng đường phía trước có ra sao, hãy nhớ rằng bạn mang trong mình sức mạnh của các vì sao. Bạn muốn kể thêm chi tiết cho mình nghe không?';
+      final aiResponse = await ApiService.chat(text, historyStr);
+      
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add({'role': 'ai', 'text': aiResponse});
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add({
+            'role': 'ai', 
+            'text': 'Xin lỗi bạn, kết nối tâm linh của mình đang gặp một chút gián đoạn. Bạn có thể chia sẻ lại vấn đề được không?'
+          });
+        });
+      }
     }
   }
 

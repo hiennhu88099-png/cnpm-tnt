@@ -13,4 +13,5 @@ import lombok.NoArgsConstructor;
 public class TarotDrawRequest {
     private MoodLevel currentMood;
     private int numberOfCards; // 1 to 3
+    private String description;
 }

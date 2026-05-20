@@ -33,6 +33,7 @@ public class TarotHistory {
     @Column(nullable = false)
     private MoodLevel moodAtDrawTime;
 
+    @Column(columnDefinition = "TEXT")
     private String displayedMessage;
 
     @CreationTimestamp

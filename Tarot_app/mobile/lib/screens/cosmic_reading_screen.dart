@@ -113,6 +113,9 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
   bool _loading = false;
   String? _zodiac;
   int? _lifePath;
+  final _dayCtrl   = TextEditingController();
+  final _monthCtrl = TextEditingController();
+  final _yearCtrl  = TextEditingController();
 
   final _fallbackCards = [
     {'cardName': 'The Star', 'emoji': '⭐', 'message': 'Ánh sao đang dẫn lối cho bạn. Hãy tin vào quá trình.', 'advice': 'Kiên trì và giữ vững niềm tin.'},
@@ -120,13 +123,30 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
     {'cardName': 'The Moon', 'emoji': '🌙', 'message': 'Trực giác của bạn đang dẫn đường.', 'advice': 'Hãy lắng nghe tiếng nói bên trong.'},
   ];
 
+  void _applyManualDate() {
+    final d = int.tryParse(_dayCtrl.text.trim());
+    final m = int.tryParse(_monthCtrl.text.trim());
+    final y = int.tryParse(_yearCtrl.text.trim());
+    if (d == null || m == null || y == null) return;
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1900 || y > DateTime.now().year - 5) return;
+    try {
+      final date = DateTime(y, m, d);
+      setState(() {
+        _dob = date;
+        _zodiac = _calcZodiac(date);
+        _lifePath = _calcLifePath(date);
+        _card = null;
+      });
+    } catch (_) {}
+  }
+
   void _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(1995, 6, 15),
+      initialDate: _dob ?? DateTime(1995, 6, 15),
       firstDate: DateTime(1940),
-      lastDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year - 5),
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(primary: Color(0xFFE86EAD), surface: Color(0xFF1A0A2E)),
@@ -135,6 +155,9 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
       ),
     );
     if (picked != null) {
+      _dayCtrl.text   = picked.day.toString();
+      _monthCtrl.text = picked.month.toString();
+      _yearCtrl.text  = picked.year.toString();
       setState(() {
         _dob = picked;
         _zodiac = _calcZodiac(picked);
@@ -147,8 +170,20 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
   Future<void> _doReading() async {
     if (_dob == null || _questionIdx == null) return;
     setState(() { _loading = true; _card = null; });
+
+    final theme = _themes[_themeIdx];
+    final question = (theme['questions'] as List)[_questionIdx!] as String;
+    final zodiacTrait = _zodiacData[_zodiac!]?['trait'] ?? '';
+    final element = _zodiacData[_zodiac!]?['element'] ?? '';
+    final lifeInsight = _lifePathInsight;
+    final lifePathNum = _lifePath;
+
+    final description = 'Người dùng là cung $_zodiac ($element), tính cách: $zodiacTrait. '
+        'Số chủ đạo: $lifePathNum — $lifeInsight. '
+        'Câu hỏi họ muốn khám phá: "$question".';
+
     try {
-      final raw = await ApiService.drawTarot('NEUTRAL');
+      final raw = await ApiService.drawTarot('NEUTRAL', description);
       setState(() {
         _card = {
           'cardName': (raw['cardName'] ?? raw['name'] ?? 'Soul Mirror').toString(),
@@ -158,11 +193,45 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
         };
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       final idx = math.Random().nextInt(_fallbackCards.length);
       final f = _fallbackCards[idx];
+      
+      final fCardName = f['cardName']!;
+      final fEmoji = f['emoji']!;
+      
+      final zodiac = _zodiac ?? "Song Tử";
+      final lifePathNum = _lifePath ?? 7;
+      final element = _zodiacData[zodiac]?['element'] ?? "Khí 💨";
+      final trait = _zodiacData[zodiac]?['trait'] ?? "";
+      
+      String customMessage = "";
+      String customAdvice = "";
+      
+      if (theme['label'] == 'Tình yêu') {
+        customMessage = "Năng lượng vũ trụ hội tụ giữa cung hoàng đạo $zodiac ($element - $trait) và con số chủ đạo $lifePathNum phản chiếu trực tiếp trăn trở tình cảm của bạn: \"$question\".\n\n"
+            "Sự xuất hiện của lá bài $fCardName mang ý nghĩa vô cùng thiêng liêng. Cung $zodiac mang nguyên tố $element thúc đẩy sự khao khát kết nối, nhưng con số chủ đạo $lifePathNum (con số của người tìm kiếm, tri thức và sự chiêm nghiệm nội tâm) nhắc nhở bạn rằng bạn đang cần sự cân bằng giữa lý trí và trực giác. "
+            "Trong tình yêu, lá bài $fCardName báo hiệu một thời điểm để chữa lành và thiết lập lại niềm tin. Bản thân bạn có thể đang đứng giữa ngã ba đường của sự phân vân, nhưng vũ trụ khuyên bạn hãy lắng nghe tiếng nói tĩnh lặng bên trong thay vì bị cuốn theo những xao động bên ngoài.";
+        customAdvice = "Dành 10 phút tối nay để ngồi tĩnh lặng. Hãy viết ra giấy những giá trị cốt lõi mà một mối quan hệ thực sự mang lại cho bạn. Con số chủ đạo $lifePathNum sẽ giúp trực giác của bạn trở nên sắc bén nhất khi bạn ở trạng thái yên bình.";
+      } else if (theme['label'] == 'Sự nghiệp') {
+        customMessage = "Năng lượng vũ trụ từ cung $zodiac ($element) kết hợp cùng con số chủ đạo $lifePathNum đang gửi tín hiệu mạnh mẽ đến sự nghiệp của bạn đối với băn khoăn: \"$question\".\n\n"
+            "Lá bài $fCardName xuất hiện như ngọn hải đăng soi sáng. Đặc trưng linh hoạt của $zodiac giúp bạn nhanh chóng thích nghi với môi trường mới, nhưng con số chủ đạo $lifePathNum đòi hỏi bạn phải đi vào chiều sâu, nghiên cứu kỹ lưỡng và không được đưa ra quyết định hời hợt. "
+            "Vũ trụ đang mở ra cơ hội lớn để bạn đột phá, miễn là bạn giữ vững kỷ luật và không ngừng trau dồi tri thức cốt lõi của ngành.";
+        customAdvice = "Lập một kế hoạch hành động cụ thể cho 3 tháng tới. Tập trung phát triển một kỹ năng chuyên môn sâu thay vì dàn trải. Hãy tin tưởng vào năng lực phân tích xuất sắc sẵn có trong bạn.";
+      } else {
+        customMessage = "Năng lượng cộng hưởng từ chòm sao $zodiac ($element) và con số chủ đạo $lifePathNum mang đến thông điệp định hướng quan trọng đối với cuộc sống của bạn lúc này: \"$question\".\n\n"
+            "Lá bài $fCardName là lời nhắc nhở rằng mọi thử thách xuất hiện đều là bài học tâm linh quý giá để linh hồn bạn trưởng thành hơn. "
+            "Với tư cách là một người mang số chủ đạo $lifePathNum, bạn có xu hướng tìm kiếm câu trả lời sâu xa cho mọi sự việc. Hãy kết hợp nó với sự nhạy bén, linh hoạt của chòm sao $zodiac để đón nhận cuộc sống một cách nhẹ nhàng và an nhiên hơn.";
+        customAdvice = "Dành thời gian hòa mình vào thiên nhiên hoặc đọc một cuốn sách truyền cảm hứng hôm nay. Hãy học cách buông bỏ những điều nằm ngoài tầm kiểm soát.";
+      }
+
       setState(() {
-        _card = {'cardName': f['cardName']!, 'emoji': f['emoji']!, 'message': f['message']!, 'advice': f['advice']!};
+        _card = {
+          'cardName': fCardName,
+          'emoji':    fEmoji,
+          'message':  customMessage,
+          'advice':   customAdvice,
+        };
         _loading = false;
       });
     }
@@ -188,29 +257,52 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
           // ── Birth date ──────────────────────────────────────────────────
           GlassPanel(
             padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              const Text('🎂', style: TextStyle(fontSize: 28)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Ngày sinh của bạn', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(
-                  _dob == null ? 'Chưa chọn' : '${_dob!.day}/${_dob!.month}/${_dob!.year}',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ])),
-              GestureDetector(
-                onTap: _pickDate,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE86EAD).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE86EAD).withOpacity(0.4)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Text('🎂', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Text('Ngày sinh của bạn', style: GoogleFonts.lora(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: _pickDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE86EAD).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE86EAD).withOpacity(0.4)),
+                    ),
+                    child: const Text('📅 Mở lịch', style: TextStyle(color: Color(0xFFE86EAD), fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
-                  child: const Text('Chọn', style: TextStyle(color: Color(0xFFE86EAD), fontWeight: FontWeight.w600)),
                 ),
-              ),
+              ]),
+              const SizedBox(height: 12),
+              Text('Hoặc nhập thủ công:', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+              const SizedBox(height: 8),
+              Row(children: [
+                _buildDateField(_dayCtrl,   'Ngày', 2),
+                const SizedBox(width: 8),
+                _buildDateField(_monthCtrl, 'Tháng', 2),
+                const SizedBox(width: 8),
+                _buildDateField(_yearCtrl,  'Năm', 4),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: _applyManualDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFE86EAD), Color(0xFFC9A84C)]),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('Xác nhận', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ]),
+              if (_dob != null) ...[
+                const SizedBox(height: 10),
+                Text('✅  Ngày sinh: ${_dob!.day}/${_dob!.month}/${_dob!.year}',
+                    style: const TextStyle(color: Color(0xFF4ECDC4), fontSize: 13, fontWeight: FontWeight.w600)),
+              ]
             ]),
           ),
 
@@ -406,13 +498,32 @@ class _CosmicReadingScreenState extends State<CosmicReadingScreen> {
     );
   }
 
-  String _buildCombinedAnalysis(String cardName, String message) {
-    final z = _zodiac ?? '';
-    final trait = _zodiacData[z]?['trait'] ?? '';
-    return 'Với bản chất $z — $trait — lá bài $cardName hôm nay mang đến một thông điệp đặc biệt dành riêng cho bạn:\n\n'
-           '$message\n\n'
-           'Sự kết hợp giữa năng lượng $z và thông điệp từ $cardName cho thấy đây là thời điểm quan trọng để bạn lắng nghe chính mình và hành động có chủ đích.';
+  Widget _buildDateField(TextEditingController ctrl, String hint, int maxLen) {
+    return Expanded(
+      flex: maxLen == 4 ? 2 : 1,
+      child: TextField(
+        controller: ctrl,
+        keyboardType: TextInputType.number,
+        maxLength: maxLen,
+        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+        textAlign: TextAlign.center,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+          counterText: '',
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.06),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.15))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.15))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE86EAD))),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        ),
+      ),
+    );
   }
+
+  // Show the AI message directly — it's already personalized for zodiac + question
+  String _buildCombinedAnalysis(String cardName, String message) => message;
 
   String get _lifePathInsight {
     const insights = {

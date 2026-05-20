@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../widgets/cosmic_widgets.dart';
 import '../services/api_service.dart';
 import 'cosmic_reading_screen.dart';
+import 'natal_chart_screen.dart';
 
 const _fallbackCards = [
   { 'cardName': 'The Fool', 'emoji': '🌟',
@@ -79,29 +80,40 @@ const _assetMap = <String, String>{
   'the fool'           : 'the_fool',
   'the magician'       : 'the_magician',
   'the high priestess' : 'the_high_priestess',
+  'the empress'        : 'the_empress',
   'the emperor'        : 'the_emperor',
   'the hierophant'     : 'the_hierophant',
   'the lovers'         : 'the_lovers',
   'the chariot'        : 'the_chariot',
   'strength'           : 'strength',
-  'the moon'           : 'the_moon',
-  'the star'           : 'the_star',
-  'the sun'            : 'the_sun',
+  'the hermit'         : 'the_hermit',
   'wheel of fortune'   : 'wheel_of_fortune',
+  'death'              : 'death',
+  'the tower'          : 'the_tower',
+  'the star'           : 'the_star',
+  'the moon'           : 'the_moon',
+  'the sun'            : 'the_sun',
+  'the world'          : 'the_world',
   
   // Vietnamese names fallback
   'kẻ khờ'            : 'the_fool',
   'ảo thuật gia'      : 'the_magician',
   'nữ tư tế'          : 'the_high_priestess',
+  'hoàng hậu'         : 'the_empress',
+  'nữ hoàng'          : 'the_empress',
   'hoàng đế'          : 'the_emperor',
   'giáo hoàng'        : 'the_hierophant',
   'tình nhân'         : 'the_lovers',
   'chiến xa'          : 'the_chariot',
   'sức mạnh'          : 'strength',
-  'vầng trăng'        : 'the_moon',
-  'ngôi sao'          : 'the_star',
-  'mặt trời'          : 'the_sun',
+  'ẩn sĩ'            : 'the_hermit',
   'bánh xe vận mệnh'  : 'wheel_of_fortune',
+  'cái chết'          : 'death',
+  'tòa tháp'          : 'the_tower',
+  'ngôi sao'          : 'the_star',
+  'vầng trăng'        : 'the_moon',
+  'mặt trời'          : 'the_sun',
+  'thế giới'          : 'the_world',
 };
 
 // ─── Mood list ───────────────────────────────────────────────────────────────
@@ -138,12 +150,17 @@ class _TarotScreenState extends State<TarotScreen> {
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Row(children: [
-            _TabBtn(label: '🔮 Rút lá bài', selected: _tab == 0, onTap: () => setState(() => _tab = 0)),
-            _TabBtn(label: '🌌 Bản đồ Vũ Trụ', selected: _tab == 1, onTap: () => setState(() => _tab = 1)),
+            _TabBtn(label: '🔮 Rút bài', selected: _tab == 0, onTap: () => setState(() => _tab = 0)),
+            _TabBtn(label: '🪐 Bản đồ sao', selected: _tab == 1, onTap: () => setState(() => _tab = 1)),
+            _TabBtn(label: '🌌 Vũ Trụ', selected: _tab == 2, onTap: () => setState(() => _tab = 2)),
           ]),
         ),
         Expanded(
-          child: _tab == 0 ? const _SingleCardTab() : const CosmicReadingScreen(),
+          child: _tab == 0
+              ? const _SingleCardTab()
+              : _tab == 1
+                  ? const NatalChartScreen()
+                  : const CosmicReadingScreen(),
         ),
       ],
     );
@@ -200,11 +217,19 @@ class _SingleCardTabState extends State<_SingleCardTab>
   late Animation<double> _flipAnim;
   final TextEditingController _problemCtrl = TextEditingController();
 
+  // 6 facedown cards spread states
+  bool _showSpread = false;
+  int? _selectedCardIndex;
+  List<Map<String, String>> _spreadCards = [];
+
   @override
   void initState() {
     super.initState();
     _card = null;
     _isDrawing = false;
+    _showSpread = false;
+    _selectedCardIndex = null;
+    _spreadCards = [];
     _flipCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800));
     _flipAnim = Tween<double>(begin: 0, end: 1)
@@ -220,16 +245,91 @@ class _SingleCardTabState extends State<_SingleCardTab>
 
   // ── Safely normalize any API response or fallback into Map<String,String> ──
   Map<String, String> _normalise(Map<String, dynamic> raw) {
-    final name = (raw['cardName'] ?? raw['name'] ?? 'Soul Mirror').toString();
-    var message = (raw['message'] ?? '').toString();
-    var advice = (raw['advice'] ?? '').toString();
-    var emoji = (raw['emoji'] ?? '🔮').toString();
+    var name = (raw['cardName'] ?? raw['name'] ?? 'Soul Mirror').toString().trim();
+    var message = (raw['message'] ?? '').toString().trim();
+    var advice = (raw['advice'] ?? '').toString().trim();
+    var emoji = (raw['emoji'] ?? '🔮').toString().trim();
 
-    // The backend might return very short or generic messages (e.g. "Major Arcana").
-    // To ensure the user always gets a rich, deep message, we intercept and use our rich local dictionary.
+    final viToEn = {
+      'chàng khờ': 'The Fool', 'kẻ khờ': 'The Fool',
+      'ảo thuật gia': 'The Magician',
+      'nữ tư tế': 'The High Priestess',
+      'nữ hoàng': 'The Empress',
+      'hoàng đế': 'The Emperor',
+      'giáo hoàng': 'The Hierophant',
+      'tình nhân': 'The Lovers',
+      'chiến xa': 'The Chariot',
+      'sức mạnh': 'Strength',
+      'ẩn sĩ': 'The Hermit',
+      'bánh xe vận mệnh': 'Wheel of Fortune',
+      'công lý': 'Justice',
+      'người treo ngược': 'The Hanged Man',
+      'tử thần': 'Death',
+      'cân bằng': 'Temperance',
+      'ác quỷ': 'The Devil',
+      'tòa tháp': 'The Tower',
+      'ngôi sao': 'The Star',
+      'mặt trăng': 'The Moon', 'vầng trăng': 'The Moon',
+      'mặt trời': 'The Sun',
+      'phán xét': 'Judgement',
+      'thế giới': 'The World'
+    };
+
+    final enToVi = {
+      'the fool': 'Chàng Khờ',
+      'the magician': 'Ảo Thuật Gia',
+      'the high priestess': 'Nữ Tư Tế',
+      'the empress': 'Nữ Hoàng',
+      'the emperor': 'Hoàng Đế',
+      'the hierophant': 'Giáo Hoàng',
+      'the lovers': 'Tình Nhân',
+      'the chariot': 'Chiến Xa',
+      'strength': 'Sức Mạnh',
+      'the hermit': 'Ẩn Sĩ',
+      'wheel of fortune': 'Bánh Xe Vận Mệnh',
+      'justice': 'Công Lý',
+      'the hanged man': 'Người Treo Ngược',
+      'death': 'Tử Thần',
+      'temperance': 'Cân Bằng',
+      'the devil': 'Ác Quỷ',
+      'the tower': 'Tòa Tháp',
+      'the star': 'Ngôi Sao',
+      'the moon': 'Mặt Trăng',
+      'the sun': 'Mặt Trời',
+      'judgement': 'Phán Xét',
+      'the world': 'Thế Giới'
+    };
+
+    // Standardize to English for internal lookup
+    final nameLower = name.toLowerCase();
+    final englishName = viToEn[nameLower] ?? name;
+    var vietnameseName = enToVi[englishName.toLowerCase()] ?? name;
+
+    // Parse Minor Arcana English names to translate them to Vietnamese beautifully!
+    if (englishName.toLowerCase().contains(" of ")) {
+      final parts = englishName.toLowerCase().split(" of ");
+      if (parts.length == 2) {
+        final numPart = parts[0].trim();
+        final suitPart = parts[1].trim();
+        
+        final numTrans = {
+          'ace': 'Ace', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+          'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+          'page': 'Học Trò', 'knight': 'Hiệp Sĩ', 'queen': 'Nữ Hoàng', 'king': 'Vua'
+        };
+        final suitTrans = {
+          'wands': 'Gậy', 'cups': 'Cốc', 'swords': 'Kiếm', 'pentacles': 'Tiền'
+        };
+        
+        final tNum = numTrans[numPart] ?? numPart;
+        final tSuit = suitTrans[suitPart] ?? suitPart;
+        vietnameseName = "$tNum $tSuit";
+      }
+    }
+
     final localCard = _fallbackCards.cast<Map<String, String>?>().firstWhere(
         (c) {
-          final n1 = name.toLowerCase();
+          final n1 = englishName.toLowerCase();
           final n2 = c!['cardName']!.toLowerCase();
           if (n1 == n2) return true;
           final a1 = _assetMap[n1];
@@ -239,52 +339,241 @@ class _SingleCardTabState extends State<_SingleCardTab>
         },
         orElse: () => null);
 
-    if (localCard != null) {
-      // Always override with our beautiful long Vietnamese messages
-      message = localCard['message']!;
-      advice = localCard['advice']!;
-      emoji = localCard['emoji']!;
-    } else if (message.isEmpty) {
-      message = 'Vũ trụ đang gửi tới bạn một thông điệp bí ẩn...';
+    // Dynamic Generator for Minor Arcana cards if not in Major Arcana localCard list
+    String? dynamicMessage;
+    String? dynamicAdvice;
+    String? dynamicEmoji;
+
+    if (localCard == null) {
+      final lowerName = englishName.toLowerCase();
+      String suit = "";
+      String suitVi = "";
+      String element = "";
+      String aspect = "";
+      
+      if (lowerName.contains("wands")) {
+        suit = "wands";
+        suitVi = "Gậy";
+        element = "Lửa (Fire)";
+        aspect = "đam mê, sự nghiệp, sức sáng tạo và hành động quyết liệt";
+      } else if (lowerName.contains("cups")) {
+        suit = "cups";
+        suitVi = "Cốc";
+        element = "Nước (Water)";
+        aspect = "tình cảm, trực giác, cảm xúc và các mối quan hệ sâu sắc";
+      } else if (lowerName.contains("swords")) {
+        suit = "swords";
+        suitVi = "Kiếm";
+        element = "Khí (Air)";
+        aspect = "lý trí, tư duy phản biện, thử thách, quyết định khó khăn và xung đột";
+      } else if (lowerName.contains("pentacles")) {
+        suit = "pentacles";
+        suitVi = "Tiền";
+        element = "Đất (Earth)";
+        aspect = "vật chất, tài chính, sự ổn định, sức khỏe và thành quả lao động";
+      }
+      
+      if (suit.isNotEmpty) {
+        final numberKeywords = {
+          'ace': {'vi': 'Ace (1)', 'meaning': 'một khởi đầu mới đầy hứa hẹn và tiềm năng vô hạn đang mở ra', 'advice': 'Hãy dũng cảm đón nhận cơ hội mới này bằng tất cả sự tự tin.'},
+          'two': {'vi': 'Two (2)', 'meaning': 'sự lựa chọn, cân bằng lực lượng hoặc một mối quan hệ song phương cần cân nhắc', 'advice': 'Hãy dành thời gian cân bằng các luồng ý kiến trước khi đưa ra quyết định.'},
+          'three': {'vi': 'Three (3)', 'meaning': 'sự phát triển bước đầu, tinh thần hợp tác nhóm và sự sáng tạo thăng hoa', 'advice': 'Hãy tìm kiếm sự trợ giúp hoặc cùng làm việc với những người có chung chí hướng.'},
+          'four': {'vi': 'Four (4)', 'meaning': 'sự ổn định vững chắc, nhưng có thể đi kèm sự trì trệ hoặc cần thời gian nghỉ ngơi', 'advice': 'Hãy cho phép bản thân được lùi lại, nghỉ ngơi và nạp lại năng lượng.'},
+          'five': {'vi': 'Five (5)', 'meaning': 'thử thách đột ngột, xung đột lợi ích hoặc cảm giác mất mát tạm thời', 'advice': 'Hãy kiên cường đối mặt, chấp nhận thực tế để tìm ra giải pháp tháo gỡ nút thắt.'},
+          'six': {'vi': 'Six (6)', 'meaning': 'sự hài hòa, sự giúp đỡ, hoài niệm ngọt ngào hoặc chiến thắng vượt qua bão giông', 'advice': 'Hãy mở lòng chia sẻ, trân trọng những giá trị xưa cũ và đón nhận sự hỗ trợ xung quanh.'},
+          'seven': {'vi': 'Seven (7)', 'meaning': 'sự kiên trì đấu tranh, đánh giá lại mục tiêu hoặc sự lựa chọn đa dạng đầy cám dỗ', 'advice': 'Hãy giữ sự tập trung cao độ, tránh bị xao nhãng bởi những hào nhoáng nhất thời.'},
+          'eight': {'vi': 'Eight (8)', 'meaning': 'sự chuyển động nhanh chóng, nỗ lực làm việc hoặc cảm giác bị trói buộc do chính suy nghĩ của mình', 'advice': 'Hãy dứt khoát hành động hoặc chủ động giải phóng bản thân khỏi các giới hạn tự đặt ra.'},
+          'nine': {'vi': 'Nine (9)', 'meaning': 'đỉnh cao cá nhân, sự hài lòng nội tâm hoặc những lo âu, áp lực đè nặng trong đêm tối', 'advice': 'Hãy tin tưởng vào thành quả của mình, đồng thời học cách thả lỏng tâm trí để giảm tải áp lực.'},
+          'ten': {'vi': 'Ten (10)', 'meaning': 'sự kết thúc trọn vẹn của một chu kỳ, gánh nặng cực độ hoặc sự viên mãn sung túc', 'advice': 'Hãy đón nhận kết quả gặt hái được và chuẩn bị tinh thần đóng lại chương cũ để sang chương mới.'},
+          'page': {'vi': 'Page (Học trò)', 'meaning': 'năng lượng của người học hỏi, tin tức mới đầy hào hứng và sự tò mò trẻ trung', 'advice': 'Hãy giữ tinh thần cởi mở học hỏi như một đứa trẻ trước mọi thông điệp mới.'},
+          'knight': {'vi': 'Knight (Hiệp sĩ)', 'meaning': 'hành động nhanh chóng, sự theo đuổi mục tiêu quyết liệt đôi khi hơi bốc đồng', 'advice': 'Hãy tiến lên mạnh mẽ nhưng hãy giữ một cái đầu lạnh để kiểm soát tốc độ.'},
+          'queen': {'vi': 'Queen (Nữ hoàng)', 'meaning': 'sự chín chắn, nuôi dưỡng và khả năng làm chủ sâu sắc khía cạnh năng lượng này', 'advice': 'Hãy tiếp cận vấn đề bằng lòng trắc ẩn, trực giác nhạy bén và sự bao dung.'},
+          'king': {'vi': 'King (Vua)', 'meaning': 'sự trưởng thành tối thượng, quyền lực chỉ huy, kỷ luật thép và tầm nhìn chiến lược', 'advice': 'Hãy hành xử như một người dẫn đầu đầy bản lĩnh, lý trí và có trách nhiệm.'},
+        };
+        
+        final matchedKey = numberKeywords.keys.firstWhere(
+          (k) => lowerName.contains(k), 
+          orElse: () => ''
+        );
+        
+        if (matchedKey.isNotEmpty) {
+          final kw = numberKeywords[matchedKey]!;
+          final numVi = kw['vi']!;
+          final numMeaning = kw['meaning']!;
+          final adviceAction = kw['advice']!;
+          
+          dynamicMessage = "Lá bài $vietnameseName ($englishName) xuất hiện mang theo năng lượng của nguyên tố $element, đại diện cho $aspect.\n\n"
+              "Sự kết hợp giữa số lượng $numVi và biểu tượng $suitVi báo hiệu rằng cuộc sống của bạn đang ở giai đoạn liên quan đến $numMeaning. "
+              "Đây là một tín hiệu đồng điệu từ vũ trụ, phản chiếu chính xác những suy tư hiện tại của bạn.";
+          dynamicAdvice = "$adviceAction Hãy lắng nghe năng lượng của $suitVi để tìm thấy sự bình an.";
+          dynamicEmoji = suit == "cups" ? "🏆" : (suit == "swords" ? "⚔️" : (suit == "wands" ? "🪄" : "🪙"));
+        }
+      }
+    }
+
+    // Always prefer the actual API message if available (so personalized AI answers aren't lost).
+    // Only fallback if the API didn't return any message.
+    if (message.isEmpty) {
+      if (localCard != null) {
+        message = localCard['message']!;
+        advice = localCard['advice']!;
+        emoji = localCard['emoji']!;
+      } else if (dynamicMessage != null) {
+        message = dynamicMessage;
+        advice = dynamicAdvice!;
+        emoji = dynamicEmoji!;
+      } else {
+        message = 'Vũ trụ đang gửi tới bạn một thông điệp bí ẩn...';
+      }
     }
 
     return {
-      'cardName': name,
-      'emoji': emoji,
+      'cardName': vietnameseName,
+      'emoji': emoji.isNotEmpty ? emoji : '🔮',
       'message': message,
-      'advice': advice,
+      'advice': advice.isNotEmpty ? advice : 'Hãy lắng nghe trực giác của bạn.',
+    };
+  }
+
+  String? _validateProblem(String text) {
+    final t = text.trim();
+    if (t.isEmpty) {
+      return 'Vui lòng nhập mô tả chi tiết vấn đề hoặc câu hỏi của bạn để quẻ bài linh ứng.';
+    }
+    if (t.length < 15) {
+      return 'Mô tả quá ngắn. Vui lòng viết chi tiết hơn (tối thiểu 15 ký tự) để vũ trụ thấu cảm vấn đề của bạn.';
+    }
+    if (t.length > 500) {
+      return 'Mô tả quá dài (tối đa 500 ký tự). Hãy tóm tắt câu hỏi của bạn ngắn gọn và tập trung hơn.';
+    }
+
+    final lower = t.toLowerCase();
+    
+    // 1. Check for extreme repeated characters (e.g. "aaaaa", "xxxxxx")
+    if (RegExp(r'(.)\1{4,}').hasMatch(lower)) {
+      return 'Phát hiện ký tự lặp vô nghĩa. Vui lòng tịnh tâm đặt câu hỏi nghiêm túc.';
+    }
+
+    // 2. Check for Vietnamese vowels in longer words to prevent simple English keyboard mashing (e.g. "sdgfsdgfh", "qweqweqwe")
+    final vowels = RegExp(r'[aeiouyàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹ]');
+    final words = lower.split(RegExp(r'\s+'));
+    for (var w in words) {
+      if (w.length >= 6 && !w.contains(vowels)) {
+        return 'Phát hiện chuỗi chữ viết không hợp lệ. Vui lòng nhập câu hỏi bằng tiếng Việt có nghĩa.';
+      }
+    }
+
+    // 3. Reject high-density consonant rows (e.g. "jklmnq")
+    if (RegExp(r'[bcdfghjklmnpqrstvwxyz]{5,}').hasMatch(lower)) {
+      return 'Mô tả chứa chuỗi ký tự vô nghĩa liên tiếp. Vui lòng tịnh tâm viết câu hỏi cụ thể.';
+    }
+
+    return null;
+  }
+
+  Map<String, String> _selectLocalFallbackCard(String description) {
+    final lower = description.toLowerCase();
+    String targetName = 'The Star'; // Default healing/peace card
+
+    if (lower.contains('yêu') || lower.contains('tình') || lower.contains('ly hôn') || 
+        lower.contains('cưới') || lower.contains('bạn gái') || lower.contains('bạn trai') || 
+        lower.contains('hẹn hò') || lower.contains('crush') || lower.contains('người cũ')) {
+      targetName = 'The Lovers';
+    } else if (lower.contains('tiền') || lower.contains('học') || lower.contains('thi') || 
+               lower.contains('việc') || lower.contains('sự nghiệp') || lower.contains('công ty') || 
+               lower.contains('kinh doanh') || lower.contains('nợ') || lower.contains('lương')) {
+      targetName = 'The Magician';
+    } else if (lower.contains('buồn') || lower.contains('khóc') || lower.contains('mệt') || 
+               lower.contains('áp lực') || lower.contains('stress') || lower.contains('bệnh') || 
+               lower.contains('lo lắng') || lower.contains('sợ')) {
+      targetName = 'Strength';
+    }
+
+    final card = _fallbackCards.firstWhere(
+      (c) => c['cardName']!.toLowerCase() == targetName.toLowerCase(),
+      orElse: () => _fallbackCards[0]
+    );
+
+    final cleanEnName = card['cardName']!;
+    final String cleanViName = cleanEnName == 'The Lovers' ? 'Tình Nhân' : 
+                               (cleanEnName == 'The Magician' ? 'Ảo Thuật Gia' : 
+                               (cleanEnName == 'Strength' ? 'Sức Mạnh' : 'Ngôi Sao'));
+
+    String customMsg = "Lá bài $cleanViName xuất hiện phản chiếu chính xác những trăn trở của bạn về vấn đề: \"$description\".\n\n${card['message']}";
+
+    return {
+      'cardName': cleanViName,
+      'emoji': card['emoji']!,
+      'message': customMsg,
+      'advice': card['advice']!,
     };
   }
 
   Future<void> _drawCard() async {
-    if (_selectedMood == null) return;
+    final valError = _validateProblem(_problemCtrl.text);
+    if (valError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF1A0A2E),
+          content: Row(children: [
+            const Text('⚠️ ', style: TextStyle(fontSize: 16)),
+            Expanded(
+              child: Text(
+                valError,
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
+              ),
+            ),
+          ]),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isDrawing = true;
       _card = null;
+      _showSpread = false;
+      _selectedCardIndex = null;
+      _spreadCards = [];
     });
     _flipCtrl.reset();
 
     await Future.delayed(const Duration(milliseconds: 600));
 
+    Map<String, String> drawn;
     try {
-      final moodLevel = _moods[_selectedMood!]['value']!;
-      final raw = await ApiService.drawTarot(moodLevel);
-      final normalised = _normalise(raw);
-      setState(() {
-        _card = normalised;
-        _isDrawing = false;
-      });
+      final moodLevel = _selectedMood != null ? _moods[_selectedMood!]['value']! : 'NEUTRAL';
+      final raw = await ApiService.drawTarot(moodLevel, _problemCtrl.text.trim());
+      drawn = _normalise(raw);
     } catch (_) {
-      // Use fallback local card on API error
-      final idx = math.Random().nextInt(_fallbackCards.length);
-      final normalised = _normalise(Map<String, dynamic>.from(_fallbackCards[idx]));
-      if (mounted) setState(() { _card = normalised; _isDrawing = false; });
-      return;
+      // Use beautifully tailored topic fallback on API error or connection issues
+      drawn = _selectLocalFallbackCard(_problemCtrl.text.trim());
     }
 
-    await Future.delayed(const Duration(milliseconds: 200));
-    _flipCtrl.forward();
+    // Populate 6 spread cards with 1 destined card and 5 unique fillers
+    final List<Map<String, String>> fillers = [];
+    final List<Map<String, String>> availableFillers = _fallbackCards
+        .map((c) => Map<String, String>.from(c))
+        .where((c) => c['cardName']?.toLowerCase() != drawn['cardName']?.toLowerCase())
+        .toList();
+    availableFillers.shuffle();
+    for (int i = 0; i < 5 && i < availableFillers.length; i++) {
+      fillers.add(availableFillers[i]);
+    }
+    
+    final List<Map<String, String>> spread = [drawn, ...fillers];
+    spread.shuffle();
+
+    if (mounted) {
+      setState(() {
+        _card = drawn;
+        _spreadCards = spread;
+        _showSpread = true;
+        _isDrawing = false;
+      });
+    }
   }
 
   @override
@@ -304,7 +593,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
           const SizedBox(height: 24),
 
           // ── Mood picker ──────────────────────────────────────────────────
-          Text('Tôi đang cảm thấy...',
+          Text('Tôi đang cảm thấy... (Tùy chọn)',
               style: TextStyle(
                   color: Colors.white.withOpacity(0.85),
                   fontWeight: FontWeight.w600,
@@ -374,11 +663,9 @@ class _SingleCardTabState extends State<_SingleCardTab>
 
           // ── Draw button ──────────────────────────────────────────────────
           CosmicButton(
-            label: _selectedMood == null
-                ? 'Chọn cảm xúc trước'
-                : '🔮  Rút lá bài',
+            label: _card != null ? 'Trải lại quẻ bài mới' : '🔮  Trải 6 lá bài số mệnh',
             isLoading: _isDrawing,
-            onTap: _selectedMood != null && !_isDrawing ? _drawCard : null,
+            onTap: !_isDrawing ? _drawCard : null,
           ),
           const SizedBox(height: 28),
 
@@ -395,22 +682,81 @@ class _SingleCardTabState extends State<_SingleCardTab>
               ]),
             ),
 
-          // ── Card reveal ──────────────────────────────────────────────────
-          if (!_isDrawing && _card != null)
-            AnimatedBuilder(
-              animation: _flipAnim,
-              builder: (_, child) {
-                final angle = _flipAnim.value * 3.14159;
-                return Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001)
-                    ..rotateY(angle < 1.57 ? angle : 3.14159 - angle),
-                  child: angle < 1.57 ? _buildBack() : child,
+          // ── 6 Facedown Cards Spread ──────────────────────────────────────
+          if (!_isDrawing && _card != null && _showSpread) ...[
+            Text('Hãy chọn 1 trong 6 lá bài số mệnh để bộc lộ tương lai:',
+                style: GoogleFonts.lora(
+                    color: const Color(0xFFC9A84C),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 0.65,
+              ),
+              itemCount: 6,
+              itemBuilder: (context, i) {
+                final isSelected = _selectedCardIndex == i;
+                final hasSelection = _selectedCardIndex != null;
+                
+                return GestureDetector(
+                  onTap: () {
+                    if (hasSelection) return;
+                    setState(() {
+                      // Magical Force Draw Swap
+                      final targetIndex = _spreadCards.indexWhere(
+                          (c) => c['cardName']?.toLowerCase() == _card!['cardName']?.toLowerCase());
+                      if (targetIndex != i && targetIndex != -1) {
+                        final temp = _spreadCards[i];
+                        _spreadCards[i] = _spreadCards[targetIndex];
+                        _spreadCards[targetIndex] = temp;
+                      }
+                      _selectedCardIndex = i;
+                    });
+                    _flipCtrl.reset();
+                    _flipCtrl.forward();
+                  },
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 350),
+                    opacity: !hasSelection 
+                        ? 1.0 
+                        : (isSelected ? 1.0 : 0.2),
+                    child: Transform.scale(
+                      scale: isSelected ? 1.05 : 1.0,
+                      child: isSelected
+                          ? AnimatedBuilder(
+                              animation: _flipAnim,
+                              builder: (_, child) {
+                                final angle = _flipAnim.value * 3.14159;
+                                return Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, 0.0015)
+                                    ..rotateY(angle < 1.57 ? angle : 3.14159 - angle),
+                                  child: angle < 1.57 
+                                      ? _buildCompactBack() 
+                                      : _buildCompactFront(_spreadCards[i]),
+                                );
+                              },
+                            )
+                          : _buildCompactBack(),
+                    ),
+                  ),
                 );
               },
-              child: _buildFront(_card!),
             ),
+            const SizedBox(height: 28),
+          ],
+
+          // ── Detailed Card Reveal ──────────────────────────────────────────
+          if (!_isDrawing && _card != null && _selectedCardIndex != null) ...[
+            _buildFront(_card!),
+          ],
 
           const SizedBox(height: 24),
         ],
@@ -418,7 +764,141 @@ class _SingleCardTabState extends State<_SingleCardTab>
     );
   }
 
-  // ── Card back ─────────────────────────────────────────────────────────────
+  // ── Compact Card Back ──────────────────────────────────────────────────────
+  Widget _buildCompactBack() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF22143B), Color(0xFF0F071D)],
+        ),
+        border: Border.all(
+          color: const Color(0xFFC9A84C).withOpacity(0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFE86EAD).withOpacity(0.12),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: const Center(
+        child: Text('🔮', style: TextStyle(fontSize: 26)),
+      ),
+    );
+  }
+
+  // ── Compact Card Front ─────────────────────────────────────────────────────
+  Widget _buildCompactFront(Map<String, String> card) {
+    final name = card['cardName'] ?? '';
+    final assetKey = name.toLowerCase();
+    final assetFile = _assetMap[assetKey];
+    final hasImage = assetFile != null;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0D0518), Color(0xFF1A0A2E)],
+        ),
+        border: Border.all(
+          color: const Color(0xFFC9A84C).withOpacity(0.5),
+          width: 1.5,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: hasImage
+            ? Image.asset(
+                'assets/images/tarot/$assetFile.png',
+                fit: BoxFit.cover,
+              )
+            : Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF1A0A2E),
+                      Color(0xFF0A0216),
+                    ],
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: 0.3,
+                        child: CustomPaint(
+                          painter: _StarryPainter(),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFC9A84C).withOpacity(0.3),
+                            width: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFFE86EAD).withOpacity(0.15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE86EAD).withOpacity(0.2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            card['emoji'] ?? '🔮',
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 6,
+                      left: 4,
+                      right: 4,
+                      child: Text(
+                        name,
+                        style: GoogleFonts.lora(
+                          color: const Color(0xFFC9A84C),
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  // ── Card back (for fallback single animation) ──────────────────────────────
   Widget _buildBack() {
     return GlassPanel(
       padding: const EdgeInsets.all(48),
@@ -477,19 +957,104 @@ class _SingleCardTabState extends State<_SingleCardTab>
                       fit: BoxFit.contain,
                       alignment: Alignment.center,
                     )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(emoji,
-                            style: const TextStyle(fontSize: 72)),
-                        const SizedBox(height: 12),
-                        Text(name,
-                            style: GoogleFonts.lora(
-                                color: const Color(0xFFC9A84C),
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center),
-                      ],
+                  : Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF1E0B36), Color(0xFF070210)],
+                        ),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Opacity(
+                              opacity: 0.4,
+                              child: CustomPaint(
+                                painter: _StarryPainter(),
+                              ),
+                            ),
+                          ),
+                          Center(
+                            child: AnimatedBuilder(
+                              animation: _flipAnim,
+                              builder: (context, child) {
+                                return Transform.rotate(
+                                  angle: 0.35,
+                                  child: Container(
+                                    width: 240,
+                                    height: 240,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFFC9A84C).withOpacity(0.12),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              width: 190,
+                              height: 190,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFC9A84C).withOpacity(0.2),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              width: 130,
+                              height: 130,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    const Color(0xFFE86EAD).withOpacity(0.25),
+                                    const Color(0xFF4ECDC4).withOpacity(0.02),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFE86EAD).withOpacity(0.3),
+                                    blurRadius: 40,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  emoji,
+                                  style: const TextStyle(fontSize: 68),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: Container(
+                              margin: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFFC9A84C).withOpacity(0.25),
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                          const Positioned(top: 24, left: 24, child: Text('✨', style: TextStyle(color: Color(0xFFC9A84C), fontSize: 14))),
+                          const Positioned(top: 24, right: 24, child: Text('✨', style: TextStyle(color: Color(0xFFC9A84C), fontSize: 14))),
+                          const Positioned(bottom: 24, left: 24, child: Text('✨', style: TextStyle(color: Color(0xFFC9A84C), fontSize: 14))),
+                          const Positioned(bottom: 24, right: 24, child: Text('✨', style: TextStyle(color: Color(0xFFC9A84C), fontSize: 14))),
+                        ],
+                      ),
                     ),
             ),
           ),
@@ -677,4 +1242,21 @@ class _SingleCardTabState extends State<_SingleCardTab>
       ),
     );
   }
+}
+
+class _StarryPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    final rand = math.Random(42); // Seeded so stars don't jitter
+    for (int i = 0; i < 40; i++) {
+      final x = rand.nextDouble() * size.width;
+      final y = rand.nextDouble() * size.height;
+      final r = rand.nextDouble() * 1.5 + 0.5;
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

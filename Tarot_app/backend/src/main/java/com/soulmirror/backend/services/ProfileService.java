@@ -3,6 +3,8 @@ package com.soulmirror.backend.services;
 import com.soulmirror.backend.dto.ProfileStatsDto;
 import com.soulmirror.backend.entities.User;
 import com.soulmirror.backend.entities.Mood;
+import com.soulmirror.backend.entities.TarotHistory;
+import com.soulmirror.backend.entities.JournalEntry;
 import com.soulmirror.backend.enums.MoodLevel;
 import com.soulmirror.backend.repositories.JournalEntryRepository;
 import com.soulmirror.backend.repositories.MoodRepository;
@@ -27,8 +29,11 @@ public class ProfileService {
     public ProfileStatsDto getProfileStats(String email) {
         User user = userRepository.findByEmail(email).orElseThrow();
 
-        int tarotCount = tarotHistoryRepository.findByUserIdOrderByDrawnAtDesc(user.getId()).size();
-        int journalCount = journalEntryRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).size();
+        List<TarotHistory> tarotHistories = tarotHistoryRepository.findByUserIdOrderByDrawnAtDesc(user.getId());
+        int tarotCount = tarotHistories.size();
+
+        List<JournalEntry> journals = journalEntryRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        int journalCount = journals.size();
 
         List<Mood> moods = moodRepository.findByUserIdOrderByLoggedAtDesc(user.getId());
         String mostFrequentMood = "Chưa có";
@@ -49,11 +54,52 @@ public class ProfileService {
             personality = user.getProfile().getQ1LifeFeeling().equalsIgnoreCase("growing") ? "Builder" : "Seeker";
         }
 
+        // Calculate consecutive streak based on active dates in Vietnam timezone (Asia/Ho_Chi_Minh)
+        java.time.ZoneId vnZone = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+        java.util.Set<java.time.LocalDate> activeDates = new java.util.HashSet<>();
+
+        for (Mood m : moods) {
+            if (m.getLoggedAt() != null) {
+                activeDates.add(m.getLoggedAt().toLocalDate());
+            }
+        }
+        for (TarotHistory th : tarotHistories) {
+            if (th.getDrawnAt() != null) {
+                activeDates.add(th.getDrawnAt().toLocalDate());
+            }
+        }
+        for (JournalEntry j : journals) {
+            if (j.getCreatedAt() != null) {
+                activeDates.add(j.getCreatedAt().toLocalDate());
+            }
+        }
+
+        int streak = 0;
+        java.time.LocalDate today = java.time.LocalDate.now(vnZone);
+        
+        if (!activeDates.isEmpty()) {
+            if (activeDates.contains(today)) {
+                streak = 1;
+                java.time.LocalDate checkDate = today.minusDays(1);
+                while (activeDates.contains(checkDate)) {
+                    streak++;
+                    checkDate = checkDate.minusDays(1);
+                }
+            } else if (activeDates.contains(today.minusDays(1))) {
+                streak = 1;
+                java.time.LocalDate checkDate = today.minusDays(2);
+                while (activeDates.contains(checkDate)) {
+                    streak++;
+                    checkDate = checkDate.minusDays(1);
+                }
+            }
+        }
+
         return ProfileStatsDto.builder()
                 .displayName(user.getDisplayName())
                 .email(user.getEmail())
                 .personalityType(personality)
-                .currentStreak(moods.isEmpty() ? 0 : 1) // Simplified streak logic
+                .currentStreak(streak)
                 .tarotDrawnCount(tarotCount)
                 .journalCount(journalCount)
                 .mostFrequentMood(mostFrequentMood)
