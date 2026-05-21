@@ -203,7 +203,7 @@ class _NatalChartScreenState extends State<NatalChartScreen> with SingleTickerPr
           onTap: () async {
             final picked = await showTimePicker(
               context: context,
-              initialTime: _birthTime ?? const TimeOfDay(12, 0),
+              initialTime: _birthTime ?? const TimeOfDay(hour: 12, minute: 0),
             );
             if (picked != null) setState(() => _birthTime = picked);
           },

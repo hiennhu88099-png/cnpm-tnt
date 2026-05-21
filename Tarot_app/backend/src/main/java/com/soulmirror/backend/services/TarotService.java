@@ -6,6 +6,7 @@ import com.soulmirror.backend.entities.TarotCard;
 import com.soulmirror.backend.entities.TarotCardMeaning;
 import com.soulmirror.backend.entities.TarotHistory;
 import com.soulmirror.backend.entities.User;
+import com.soulmirror.backend.entities.UserProfile;
 import com.soulmirror.backend.repositories.TarotCardMeaningRepository;
 import com.soulmirror.backend.repositories.TarotCardRepository;
 import com.soulmirror.backend.repositories.TarotHistoryRepository;
@@ -13,10 +14,10 @@ import com.soulmirror.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,147 @@ public class TarotService {
     private final TarotHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final GeminiService geminiService;
+
+    // ─── Zodiac sign from birth date ─────────────────────────────────────────
+    private String calculateZodiac(int day, int month) {
+        if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return "Bạch Dương (Aries) - Lửa, Sao Hỏa, năng động và dũng cảm";
+        if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return "Kim Ngưu (Taurus) - Đất, Sao Kim, kiên định và thực tế";
+        if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return "Song Tử (Gemini) - Khí, Sao Thủy, linh hoạt và tò mò";
+        if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return "Cự Giải (Cancer) - Nước, Mặt Trăng, nhạy cảm và chăm sóc";
+        if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return "Sư Tử (Leo) - Lửa, Mặt Trời, tự hào và lãnh đạo";
+        if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return "Xử Nữ (Virgo) - Đất, Sao Thủy, tỉ mỉ và phân tích";
+        if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return "Thiên Bình (Libra) - Khí, Sao Kim, cân bằng và hài hòa";
+        if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return "Thiên Yết (Scorpio) - Nước, Sao Hỏa/Diêm Vương, bí ẩn và sâu sắc";
+        if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return "Nhân Mã (Sagittarius) - Lửa, Sao Mộc, tự do và triết học";
+        if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return "Ma Kết (Capricorn) - Đất, Sao Thổ, kỷ luật và tham vọng";
+        if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return "Bảo Bình (Aquarius) - Khí, Sao Thổ/Thiên Vương, độc lập và nhân văn";
+        return "Song Ngư (Pisces) - Nước, Sao Hải Vương, mộng mơ và thấu cảm";
+    }
+
+    // ─── Life Path Number (Numerology) ───────────────────────────────────────
+    private String calculateLifePath(int day, int month, int year) {
+        int sum = sumDigits(day) + sumDigits(month) + sumDigits(year);
+        while (sum > 9 && sum != 11 && sum != 22 && sum != 33) {
+            sum = sumDigits(sum);
+        }
+        Map<Integer, String> meanings = Map.ofEntries(
+            Map.entry(1, "số 1 - Người Tiên Phong: độc lập, lãnh đạo, ý chí sắt đá"),
+            Map.entry(2, "số 2 - Người Hòa Giải: nhạy cảm, hợp tác, trực giác cao"),
+            Map.entry(3, "số 3 - Người Sáng Tạo: biểu đạt, vui vẻ, nghệ thuật và giao tiếp"),
+            Map.entry(4, "số 4 - Người Xây Dựng: kỷ luật, ổn định, thực tế và bền bỉ"),
+            Map.entry(5, "số 5 - Người Tự Do: thay đổi, phiêu lưu, đa tài và linh hoạt"),
+            Map.entry(6, "số 6 - Người Nuôi Dưỡng: trách nhiệm, yêu thương, gia đình và chữa lành"),
+            Map.entry(7, "số 7 - Người Tìm Kiếm: nội tâm sâu sắc, tâm linh, trí tuệ và bí ẩn"),
+            Map.entry(8, "số 8 - Người Quyền Lực: tham vọng, thành công vật chất, kinh doanh"),
+            Map.entry(9, "số 9 - Người Nhân Ái: từ bi, hoàn thành sứ mệnh, cống hiến cho nhân loại"),
+            Map.entry(11, "số 11 - Bậc Thầy Trực Giác: tâm linh cao, nhạy bén siêu nhiên, sứ giả ánh sáng"),
+            Map.entry(22, "số 22 - Bậc Thầy Kiến Tạo: tiềm năng vô hạn, biến ước mơ thành hiện thực lớn lao"),
+            Map.entry(33, "số 33 - Bậc Thầy Yêu Thương: chữa lành thế giới, trí tuệ tâm linh tối thượng")
+        );
+        return meanings.getOrDefault(sum, "số " + sum);
+    }
+
+    private int sumDigits(int n) {
+        int s = 0;
+        while (n > 0) { s += n % 10; n /= 10; }
+        return s;
+    }
+
+    // ─── Translate focusArea/timeframe to Vietnamese ──────────────────────────
+    private String translateFocusArea(String area) {
+        if (area == null) return null;
+        return switch (area.toLowerCase()) {
+            case "love"    -> "Tình yêu & Các mối quan hệ";
+            case "career"  -> "Sự nghiệp & Công việc";
+            case "self"    -> "Bản thân & Phát triển cá nhân";
+            case "finance" -> "Tài chính & Vật chất";
+            case "family"  -> "Gia đình & Cộng đồng";
+            default        -> area;
+        };
+    }
+
+    private String translateTimeframe(String tf) {
+        if (tf == null) return null;
+        return switch (tf.toLowerCase()) {
+            case "today"   -> "Hôm nay (năng lượng ngắn hạn)";
+            case "week"    -> "Tuần này";
+            case "month"   -> "Tháng này";
+            case "general" -> "Tổng quan (không giới hạn thời gian)";
+            default        -> tf;
+        };
+    }
+
+    private String translatePersonality(String p) {
+        if (p == null) return null;
+        return switch (p) {
+            case "Seeker"   -> "Người Tìm Kiếm - luôn khao khát ý nghĩa và chân lý";
+            case "Healer"   -> "Người Chữa Lành - năng lượng chữa trị, thấu cảm sâu sắc";
+            case "Dreamer"  -> "Người Mộng Mơ - trí tưởng tượng phong phú, thế giới nội tâm rộng lớn";
+            case "Builder"  -> "Người Kiến Tạo - thực tế, có mục tiêu rõ ràng, hành động quyết đoán";
+            case "Guardian" -> "Người Bảo Vệ - trách nhiệm cao, yêu thương và muốn gìn giữ mọi thứ";
+            default         -> p;
+        };
+    }
+
+    // ─── CORE: Build deep multi-layer user context ────────────────────────────
+    private String buildDeepUserContext(User user, TarotDrawRequest request) {
+        StringBuilder ctx = new StringBuilder();
+        ctx.append("=== HỒ SƠ CÁ NHÂN CỦA NGƯỜI DÙNG ===\n");
+
+        // Use explicit request data if provided, otherwise fallback to profile
+        String name = request.getUserName() != null && !request.getUserName().trim().isEmpty() 
+            ? request.getUserName().trim() 
+            : user.getDisplayName();
+        ctx.append("Tên: ").append(name).append("\n");
+
+        UserProfile profile = user.getProfile();
+        LocalDate bd = null;
+        if (request.getBirthDate() != null && !request.getBirthDate().trim().isEmpty()) {
+            try {
+                bd = LocalDate.parse(request.getBirthDate().trim());
+            } catch (Exception ignored) {}
+        }
+        if (bd == null && profile != null) {
+            bd = profile.getBirthDate();
+        }
+
+        if (bd != null) {
+            int day = bd.getDayOfMonth(), month = bd.getMonthValue(), year = bd.getYear();
+            ctx.append("Ngày sinh: ").append(day).append("/").append(month).append("/").append(year).append("\n");
+
+            // Layer 2: Astrology
+            String zodiac = calculateZodiac(day, month);
+            ctx.append("Cung hoàng đạo: ").append(zodiac).append("\n");
+
+            // Layer 3: Numerology
+            String lifePath = calculateLifePath(day, month, year);
+            ctx.append("Số chủ đạo (Life Path): ").append(lifePath).append("\n");
+        }
+
+        // Layer 4: Onboarding psychographic profile
+        if (profile != null) {
+            ctx.append("\n=== HỒ SƠ TÂM LÝ (từ trắc nghiệm cá nhân) ===\n");
+            if (profile.getPersonalityType() != null)
+                ctx.append("Kiểu tính cách: ").append(translatePersonality(profile.getPersonalityType())).append("\n");
+            if (profile.getQ1LifeFeeling() != null)
+                ctx.append("Giai đoạn cuộc sống: ").append(profile.getQ1LifeFeeling()).append("\n");
+            if (profile.getQ2SupportStyle() != null)
+                ctx.append("Phong cách cần hỗ trợ: ").append(profile.getQ2SupportStyle()).append("\n");
+            if (profile.getQ3Challenge() != null)
+                ctx.append("Nỗi trăn trở lớn nhất: ").append(profile.getQ3Challenge()).append("\n");
+        }
+
+        // Layer 5: Current session context (optional fields from request)
+        ctx.append("\n=== NGỮ CẢNH BUỔI TRẢI BÀI HÔM NAY ===\n");
+        if (request.getFocusArea() != null) {
+            ctx.append("Lĩnh vực cần soi: ").append(translateFocusArea(request.getFocusArea())).append("\n");
+        }
+        if (request.getTimeframe() != null) {
+            ctx.append("Phạm vi thời gian: ").append(translateTimeframe(request.getTimeframe())).append("\n");
+        }
+
+        return ctx.toString();
+    }
 
     public TarotDrawResponse drawCard(String email, TarotDrawRequest request) {
         String description = request.getDescription() != null ? request.getDescription().trim() : "";
@@ -54,48 +196,46 @@ public class TarotService {
 
         User user = userRepository.findByEmail(email).orElseThrow();
         
+        // Build the comprehensive deep user context
+        String userContext = buildDeepUserContext(user, request);
+        
         List<TarotCard> allCards = tarotCardRepository.findAll();
         List<TarotCard> fallback78 = getFallback78Cards();
         
-        TarotCard drawnCard = null;
+        // ─── SYNCHRONISTIC RANDOMIZER ENGINE ───
+        // We use SecureRandom for true synchronicity instead of standard Random
+        java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+        List<TarotCard> targetList = allCards.isEmpty() ? fallback78 : allCards;
+        TarotCard drawnCard = targetList.get(secureRandom.nextInt(targetList.size()));
+        
+        // 50% chance of the card being Reversed (Ngược)
+        boolean isReversed = secureRandom.nextBoolean();
+        
         String message = "";
         String advice = "";
         
-        String moodStr = request.getCurrentMood() != null ? request.getCurrentMood().name() : "NORMAL";
-        
-        // ─── 1. THUẬT TOÁN LLM SPIRIT GUIDE & CỰC KỲ THẤU CẢM ───
-        // AI sẽ tự tay lựa chọn lá bài chuẩn xác nhất dựa trên mô tả vấn đề của người dùng
+        // ─── FORCED INTERPRETATION LAYER ───
+        // Ép buộc AI phải diễn giải lá bài cụ thể này trên vấn đề cụ thể,
+        // chấm dứt hiện tượng AI tự ý chọn những lá bài chung chung lạc quan.
         try {
-            Map<String, String> aiReading = geminiService.drawCardWithAI(moodStr, request.getDescription());
-            
-            if (aiReading != null && !aiReading.isEmpty() && aiReading.containsKey("cardName")) {
-                String aiCardName = aiReading.get("cardName").trim();
-                message = aiReading.get("message");
-                advice = aiReading.get("advice");
-                
-                // Advanced fuzzy and multilingual card matching algorithm
-                drawnCard = findBestMatchingCard(aiCardName, allCards, fallback78);
+            String cardFullName = drawnCard.getNameVi() + " (" + drawnCard.getNameEn() + ")";
+            if (isReversed) {
+                cardFullName += " - Chiều Ngược (Reversed)";
+            } else {
+                cardFullName += " - Chiều Thuận (Upright)";
             }
+            
+            Map<String, String> aiReading = geminiService.generateReading(
+                cardFullName, 
+                userContext, 
+                request.getDescription()
+            );
+            message = aiReading.get("message");
+            advice = aiReading.get("advice");
         } catch (Exception e) {
-            System.err.println("AI drawing card failed, falling back to heuristic topic draw: " + e.getMessage());
+            System.err.println("AI interpretation failed, falling back: " + e.getMessage());
         }
 
-        // ─── 2. CƠ CHẾ DỰ PHÒNG AN TOÀN CHỦ ĐỀ (HEURISTIC TOPIC FALLBACK) ───
-        // Nếu AI bốc bài lỗi hoặc không tìm thấy lá bài tương thích, hệ thống sẽ tự động bốc lá bài liên quan nhất đến chủ đề
-        if (drawnCard == null) {
-            drawnCard = selectHeuristicCard(description, allCards, fallback78);
-            
-            // Sinh lời giải mặc định cá nhân hóa
-            if (message == null || message.trim().isEmpty()) {
-                Map<String, String> fallbackReading = geminiService.generateReading(
-                    drawnCard.getNameVi() + " (" + drawnCard.getNameEn() + ")", 
-                    moodStr, 
-                    request.getDescription()
-                );
-                message = fallbackReading.get("message");
-                advice = fallbackReading.get("advice");
-            }
-        }
 
         // Nếu mọi nỗ lực vẫn trống (phòng vệ cao nhất khi mạng đứt hoặc API sập hoàn toàn)
         if (message == null || message.trim().isEmpty()) {
@@ -158,6 +298,8 @@ public class TarotService {
                     .displayedMessage(message)
                     .build();
             historyRepository.save(history);
+            if (message == null || message.isEmpty()) message = "Vũ trụ đang gửi tới bạn một thông điệp bí ẩn...";
+            if (advice == null || advice.isEmpty()) advice = "Hãy lắng nghe trực giác của bạn.";
         }
 
         return TarotDrawResponse.builder()
@@ -166,6 +308,7 @@ public class TarotService {
                 .emoji("🔮")
                 .message(message)
                 .advice(advice)
+                .isReversed(isReversed)
                 .build();
     }
 

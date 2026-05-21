@@ -116,14 +116,6 @@ const _assetMap = <String, String>{
   'thế giới'          : 'the_world',
 };
 
-// ─── Mood list ───────────────────────────────────────────────────────────────
-const _moods = [
-  {'emoji': '😊', 'label': 'Vui vẻ',   'value': 'GOOD'},
-  {'emoji': '😌', 'label': 'Bình yên', 'value': 'NEUTRAL'},
-  {'emoji': '😔', 'label': 'Buồn bã',  'value': 'LOW'},
-  {'emoji': '😤', 'label': 'Lo lắng',  'value': 'VERY_LOW'},
-  {'emoji': '😞', 'label': 'Kiệt sức', 'value': 'VERY_LOW'},
-];
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 // ─── Outer wrapper with internal tabs ────────────────────────────────────────
@@ -207,7 +199,6 @@ class _SingleCardTab extends StatefulWidget {
 
 class _SingleCardTabState extends State<_SingleCardTab>
     with SingleTickerProviderStateMixin {
-  int? _selectedMood;
 
   // Always null-safe: either from API or null
   Map<String, String>? _card;
@@ -215,7 +206,24 @@ class _SingleCardTabState extends State<_SingleCardTab>
   bool _isDrawing = false;
   late AnimationController _flipCtrl;
   late Animation<double> _flipAnim;
+  final TextEditingController _userNameCtrl = TextEditingController();
+  final TextEditingController _dobCtrl = TextEditingController();
   final TextEditingController _problemCtrl = TextEditingController();
+
+  int _step = 0; // 0: Context, 1: Question, 2: Result
+  String? _focusArea;
+  String? _timeframe;
+  
+  List<String> _getSuggestions() {
+    switch (_focusArea) {
+      case 'love': return ['Mối quan hệ này đang đi về đâu?', 'Làm sao để tôi vượt qua vết thương tình cảm?'];
+      case 'career': return ['Tôi có nên chuyển việc lúc này?', 'Cơ hội thăng tiến của tôi ra sao?'];
+      case 'self': return ['Làm sao để tôi tìm lại sự bình yên?', 'Điều gì đang ngăn cản tôi phát triển?'];
+      case 'finance': return ['Tình hình tài chính sắp tới của tôi ra sao?', 'Làm sao để tôi cải thiện thu nhập?'];
+      case 'family': return ['Làm sao để hàn gắn mâu thuẫn gia đình?', 'Gia đình tôi sắp tới có bình an không?'];
+      default: return ['Tôi cần thay đổi điều gì lúc này?', 'Thông điệp vũ trụ dành cho tôi là gì?'];
+    }
+  }
 
   // 6 facedown cards spread states
   bool _showSpread = false;
@@ -230,6 +238,9 @@ class _SingleCardTabState extends State<_SingleCardTab>
     _showSpread = false;
     _selectedCardIndex = null;
     _spreadCards = [];
+    _step = 0;
+    _focusArea = null;
+    _timeframe = null;
     _flipCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 800));
     _flipAnim = Tween<double>(begin: 0, end: 1)
@@ -240,6 +251,8 @@ class _SingleCardTabState extends State<_SingleCardTab>
   void dispose() {
     _flipCtrl.dispose();
     _problemCtrl.dispose();
+    _userNameCtrl.dispose();
+    _dobCtrl.dispose();
     super.dispose();
   }
 
@@ -432,6 +445,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
       'emoji': emoji.isNotEmpty ? emoji : '🔮',
       'message': message,
       'advice': advice.isNotEmpty ? advice : 'Hãy lắng nghe trực giác của bạn.',
+      'isReversed': (raw['isReversed'] == true) ? 'true' : 'false',
     };
   }
 
@@ -544,8 +558,14 @@ class _SingleCardTabState extends State<_SingleCardTab>
 
     Map<String, String> drawn;
     try {
-      final moodLevel = _selectedMood != null ? _moods[_selectedMood!]['value']! : 'NEUTRAL';
-      final raw = await ApiService.drawTarot(moodLevel, _problemCtrl.text.trim());
+      final raw = await ApiService.drawTarot(
+        'NEUTRAL', 
+        _problemCtrl.text.trim(),
+        userName: _userNameCtrl.text.trim(),
+        birthDate: _dobCtrl.text.trim(),
+        focusArea: _focusArea,
+        timeframe: _timeframe
+      );
       drawn = _normalise(raw);
     } catch (_) {
       // Use beautifully tailored topic fallback on API error or connection issues
@@ -588,86 +608,166 @@ class _SingleCardTabState extends State<_SingleCardTab>
               style: GoogleFonts.lora(
                   fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 6),
-          Text('Bài Tarot được chọn dựa trên cảm xúc của bạn hôm nay.',
+          Text('Năng lượng vũ trụ sẽ soi sáng và giải đáp trăn trở của bạn.',
               style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 13)),
           const SizedBox(height: 24),
+          // ── Multi-Step Logic ──────────────────────────────────────────────
+          if (_step == 0) _buildStep0(),
+          if (_step == 1) _buildStep1(),
+          if (_step == 2) _buildStep2(),
+        ],
+      ),
+    );
+  }
 
-          // ── Mood picker ──────────────────────────────────────────────────
-          Text('Tôi đang cảm thấy... (Tùy chọn)',
-              style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14)),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(_moods.length, (i) {
-              final sel = _selectedMood == i;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedMood = i),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: sel
-                            ? const Color(0xFFE86EAD)
-                            : Colors.white.withOpacity(0.15)),
-                    color: sel
-                        ? const Color(0xFFE86EAD).withOpacity(0.18)
-                        : Colors.white.withOpacity(0.04),
-                  ),
-                  child: Column(children: [
-                    Text(_moods[i]['emoji']!,
-                        style: const TextStyle(fontSize: 22)),
-                    const SizedBox(height: 4),
-                    Text(_moods[i]['label']!,
-                        style: TextStyle(
-                            color: sel ? Colors.white : Colors.white54,
-                            fontSize: 10)),
-                  ]),
-                ),
-              );
-            }),
+  Widget _buildStep0() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('1. Thông tin cá nhân (Tùy chọn)',
+            style: TextStyle(color: Colors.white.withOpacity(0.85), fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _userNameCtrl,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Tên của bạn',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+            filled: true, fillColor: Colors.white.withOpacity(0.04),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE86EAD))),
           ),
-          // ── Problem input ────────────────────────────────────────────────
-          const SizedBox(height: 16),
-          Text('Vấn đề bạn đang gặp phải (Tùy chọn)',
-              style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _problemCtrl,
-            maxLines: 3,
-            style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
-            decoration: InputDecoration(
-              hintText: 'Ví dụ: Tôi đang phân vân không biết có nên chuyển việc...',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.04),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE86EAD))),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _dobCtrl,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Ngày sinh (YYYY-MM-DD)',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+            filled: true, fillColor: Colors.white.withOpacity(0.04),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE86EAD))),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text('2. Lĩnh vực quan tâm (Tùy chọn)',
+            style: TextStyle(color: Colors.white.withOpacity(0.85), fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10, runSpacing: 10,
+          children: [
+            _buildChoiceChip('love', 'Tình yêu 💖', _focusArea, (v) => setState(() => _focusArea = v)),
+            _buildChoiceChip('career', 'Sự nghiệp 💼', _focusArea, (v) => setState(() => _focusArea = v)),
+            _buildChoiceChip('finance', 'Tài chính 💰', _focusArea, (v) => setState(() => _focusArea = v)),
+            _buildChoiceChip('self', 'Bản thân 🌱', _focusArea, (v) => setState(() => _focusArea = v)),
+            _buildChoiceChip('family', 'Gia đình 🏡', _focusArea, (v) => setState(() => _focusArea = v)),
+          ],
+        ),
+        const SizedBox(height: 24),
+        CosmicButton(
+          label: 'Tiếp tục 🌌',
+          isLoading: false,
+          onTap: () => setState(() => _step = 1),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChoiceChip(String value, String label, String? groupValue, Function(String) onSelect) {
+    final sel = groupValue == value;
+    return GestureDetector(
+      onTap: () => onSelect(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: sel ? const Color(0xFFE86EAD) : Colors.white.withOpacity(0.15)),
+          color: sel ? const Color(0xFFE86EAD).withOpacity(0.18) : Colors.white.withOpacity(0.04),
+        ),
+        child: Text(label, style: TextStyle(color: sel ? Colors.white : Colors.white54, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _buildStep1() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () => setState(() => _step = 0),
+              child: const Icon(Icons.arrow_back, color: Colors.white70, size: 20),
             ),
+            const SizedBox(width: 8),
+            Text('3. Đặt câu hỏi (Bắt buộc)',
+                style: TextStyle(color: Colors.white.withOpacity(0.85), fontWeight: FontWeight.w600, fontSize: 14)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _problemCtrl,
+          maxLines: 4,
+          style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
+          decoration: InputDecoration(
+            hintText: 'Ví dụ: Tôi đang phân vân không biết có nên chuyển việc lúc này không...',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.04),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE86EAD))),
           ),
-          const SizedBox(height: 24),
+        ),
+        if (_focusArea != null) ...[
+          const SizedBox(height: 16),
+          Text('Gợi ý câu hỏi:', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+          const SizedBox(height: 8),
+          ..._getSuggestions().map((s) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: () => setState(() => _problemCtrl.text = s),
+              child: Text("👉 $s", style: const TextStyle(color: Color(0xFFC9A84C), fontSize: 13, fontStyle: FontStyle.italic)),
+            ),
+          )),
+        ],
+        const SizedBox(height: 24),
+        CosmicButton(
+          label: '🔮  Trải 6 lá bài số mệnh',
+          isLoading: false,
+          onTap: () {
+            setState(() => _step = 2);
+            _drawCard();
+          },
+        ),
+      ],
+    );
+  }
 
-          // ── Draw button ──────────────────────────────────────────────────
+  Widget _buildStep2() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_card == null && !_isDrawing)
           CosmicButton(
-            label: _card != null ? 'Trải lại quẻ bài mới' : '🔮  Trải 6 lá bài số mệnh',
-            isLoading: _isDrawing,
-            onTap: !_isDrawing ? _drawCard : null,
+            label: 'Quay lại đặt câu hỏi',
+            isLoading: false,
+            onTap: () => setState(() => _step = 1),
           ),
-          const SizedBox(height: 28),
+        if (_card != null && !_isDrawing)
+          CosmicButton(
+            label: 'Trải lại quẻ bài mới',
+            isLoading: false,
+            onTap: () {
+              _problemCtrl.clear();
+              setState(() => _step = 0);
+            },
+          ),
+        const SizedBox(height: 28),
 
           // ── Loading ──────────────────────────────────────────────────────
           if (_isDrawing)
@@ -758,9 +858,8 @@ class _SingleCardTabState extends State<_SingleCardTab>
             _buildFront(_card!),
           ],
 
-          const SizedBox(height: 24),
-        ],
-      ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -920,6 +1019,8 @@ class _SingleCardTabState extends State<_SingleCardTab>
     final emoji   = card['emoji']    ?? '🔮';
     final message = card['message']  ?? '';
     final advice  = card['advice']   ?? '';
+    final isReversed = card['isReversed'] == 'true';
+    final displayName = isReversed ? '$name (Ngược)' : name;
 
     final assetKey   = name.toLowerCase();
     final assetFile  = _assetMap[assetKey];
@@ -932,8 +1033,10 @@ class _SingleCardTabState extends State<_SingleCardTab>
           // ── Artwork ───────────────────────────────────────────────────
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
-            child: Container(
-              width: double.infinity,
+            child: Transform.rotate(
+              angle: isReversed ? 3.14159 : 0,
+              child: Container(
+                width: double.infinity,
               height: 420,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
@@ -1062,7 +1165,7 @@ class _SingleCardTabState extends State<_SingleCardTab>
           const SizedBox(height: 16),
 
           // ── Card name ─────────────────────────────────────────────────
-          Text(name,
+          Text(displayName,
               style: GoogleFonts.lora(
                   color: const Color(0xFFC9A84C),
                   fontSize: 20,

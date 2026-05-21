@@ -23,7 +23,7 @@ public class GeminiService {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
-    public Map<String, String> generateReading(String cardName, String mood, String description) {
+    public Map<String, String> generateReading(String cardName, String userContext, String description) {
         if (apiKey == null || apiKey.trim().isEmpty() || "YOUR_GEMINI_KEY".equals(apiKey)) {
             return Map.of(
                 "message", "Hãy lắng nghe trực giác của bạn. Lá bài " + cardName + " đang mở ra một cánh cổng năng lượng mới cho bạn giữa những băn khoăn về cuộc sống.",
@@ -32,23 +32,19 @@ public class GeminiService {
         }
         try {
             String prompt = String.format(
-                "Bạn là một bậc thầy giải bài Tarot và nhà tham vấn tâm lý tâm linh thấu hiểu lòng người sâu sắc.\n" +
-                "Người dùng đang gặp vấn đề cụ thể: \"%s\"\n" +
-                "Tâm trạng hiện tại của họ: \"%s\"\n" +
-                "Lá bài họ rút được: \"%s\"\n\n" +
+                "Bạn là bậc thầy Tarot thực chiến với 40 năm kinh nghiệm, kết hợp Chiêm tinh học, Thần số học và Tâm lý học Chiều Sâu. Bạn không bao giờ né tránh các góc khuất.\n\n" +
+                "=== HỒ SƠ NGƯỜI DÙNG ===\n%s\n" +
+                "=== VẤN ĐỀ ĐẶT RA ===\n%s\n" +
+                "=== LÁ BÀI RÚT ĐƯỢC BỞI VŨ TRỤ ===\n%s\n\n" +
                 "Nhiệm vụ của bạn:\n" +
-                "1. \"message\": Giải thích sự liên kết thiêng liêng và cực kỳ sâu sắc giữa lá bài này với vấn đề cụ thể của họ. Hãy viết với văn phong huyền bí, thấu cảm, ấm áp, mang tính chữa lành và phân tích tâm lý rõ ràng. Tránh xa các câu lý thuyết Tarot sáo rỗng, chung chung. Bạn phải chỉ rõ ý nghĩa lá bài này phản ánh khía cạnh nào trong câu chuyện của họ, gốc rễ của sự việc nằm ở đâu (tối thiểu 250 từ).\n" +
-                "2. \"advice\": Lời khuyên hành động thực tế, cụ thể, dễ hiểu và hữu hiệu nhất mà họ có thể thực hiện ngay hôm nay. Hãy chỉ ra từng bước nhỏ họ cần làm để tháo gỡ khó khăn, cải thiện tình hình của mình một cách rõ ràng và truyền cảm hứng (tối thiểu 120 từ).\n\n" +
-                "CHÚ Ý TỐI QUAN TRỌNG VỀ BẢN ĐỒ VŨ TRỤ:\n" +
-                "- Nếu trong mô tả vấn đề có chứa dữ liệu về ngày sinh, Cung hoàng đạo (Zodiac) hay Số chủ đạo (Life Path Number), bạn BẮT BUỘC phải thực hiện phân tích sự giao thoa, tương tác và cộng hưởng năng lượng cực kỳ chính xác giữa các yếu tố này với lá bài Tarot rút được và câu hỏi của họ.\n" +
-                "- Hãy phân tích xem năng lượng tự nhiên của cung hoàng đạo đó (ví dụ: nguyên tố Khí linh hoạt của Song Tử, nguyên tố Đất kiên nhẫn của Ma Kết...) cùng những đặc trưng hành vi của con số chủ đạo đó (ví dụ: số 7 - người tìm kiếm chân lý, số 11 - trực giác tâm linh...) đang bổ trợ tích cực hay cản trở/tạo ra nút thắt nào đối với câu hỏi cụ thể của họ.\n" +
-                "- Bài phân tích phải đan cài nhuần nhuyễn cả 3 yếu tố (Tarot, Cung hoàng đạo, Số chủ đạo) để đưa ra câu trả lời thuyết phục, mang tính cá nhân hóa tuyệt đối, cụ thể và thấu suốt nhất.\n\n" +
+                "1. \"message\": Viết bài luận giải thấu cảm nhưng sắc bén bằng tiếng Việt. Nếu lá bài là Chiều Ngược (Reversed), BẮT BUỘC phải phân tích sự tắc nghẽn năng lượng, nỗi sợ tiềm thức, sự kháng cự hoặc sự chậm trễ. Kết hợp 4 tầng phân tích: Chiêm tinh học, Thần số học, Tâm lý học, Thực tiễn. Giải thích thẳng thắn tại sao vũ trụ lại ném cho họ lá bài gai góc (hoặc tuyệt vời) này vào đúng lúc này (tối thiểu 250 từ).\n" +
+                "2. \"advice\": Lời khuyên hành động thực tế, cụ thể, dễ hiểu và mạnh mẽ nhất mà họ phải làm ngay hôm nay để gỡ rối (tối thiểu 120 từ).\n\n" +
                 "Hãy trả về kết quả dưới định dạng JSON duy nhất như sau:\n" +
                 "{\n" +
                 "  \"message\": \"nội dung thông điệp tập trung giải quyết vấn đề...\",\n" +
                 "  \"advice\": \"nội dung lời khuyên hành động thực tế...\"\n" +
                 "}",
-                description, mood, cardName
+                userContext, description, cardName
             );
 
             return callGeminiApi(prompt);
@@ -59,34 +55,33 @@ public class GeminiService {
         return Map.of();
     }
 
-    public Map<String, String> drawCardWithAI(String mood, String description) {
+    public Map<String, String> drawCardWithAI(String userContext, String description) {
         if (apiKey == null || apiKey.trim().isEmpty() || "YOUR_GEMINI_KEY".equals(apiKey)) {
             return Map.of(); // Return empty to trigger backend database fallback
         }
 
         try {
             String prompt = String.format(
-                "Bạn là một bậc thầy Tarot thông thái kiêm nhà tâm lý học phân tích theo trường phái Carl Jung (Tâm lý học chiều sâu) và thuyết Đồng điệu (Jungian Synchronicity).\n" +
-                "Người dùng đang đối mặt với vấn đề cụ thể: \"%s\"\n" +
-                "Tâm trạng hiện tại của họ: \"%s\"\n\n" +
-                "Nhiệm vụ của bạn:\n" +
-                "1. Chọn ra đúng 1 lá bài Tarot phù hợp và ý nghĩa nhất từ bộ 78 lá Tarot (phải chọn đúng tên tiếng Anh chuẩn từ danh sách 78 lá, ví dụ: 'The Lovers', 'Death', 'Three of Cups', 'Ten of Swords', 'Ace of Pentacles', 'King of Wands', v.v.).\n" +
-                "2. Viết lời luận giải bằng tiếng Việt theo phong cách tâm lý học chiều sâu Carl Jung:\n" +
-                "   - Hãy phân tích các biểu tượng nguyên mẫu (Archetypes), khám phá phần tiềm thức (Subconscious) hoặc phần Bóng tối (Shadow) của người dùng liên quan trực tiếp đến vấn đề cụ thể họ mô tả.\n" +
-                "   - Giải thích vì sao lá bài này xuất hiện vào đúng thời điểm này trong cuộc đời họ như một sự đồng điệu tâm linh thiêng liêng (Synchronicity).\n" +
-                "   - Văn phong thấu cảm, cực kỳ sâu sắc, mang tính khai sáng và trị liệu tâm lý mạnh mẽ. Tránh hoàn toàn việc mô tả chung chung mơ hồ, hãy chỉ ra gốc rễ tinh thần và hướng dẫn tư duy rõ ràng (phần message tối thiểu 250 từ).\n" +
-                "3. Đưa ra lời khuyên hành động cụ thể, thực tế, dễ thực hiện và sâu sắc để tháo gỡ vấn đề đó (phần advice tối thiểu 120 từ).\n\n" +
-                "CHÚ Ý CỐT LÕI VỀ BẢN ĐỒ VŨ TRỤ:\n" +
-                "- Nếu trong mô tả vấn đề ('description') có chứa dữ liệu về ngày sinh, Cung hoàng đạo (Zodiac) hay Số chủ đạo (Life Path Number), bạn BẮT BUỘC phải thực hiện phân tích sự giao thoa, tương tác và cộng hưởng năng lượng cực kỳ chính xác giữa các yếu tố này với lá bài Tarot bạn chọn và câu hỏi của họ.\n" +
-                "- Hãy phân tích xem năng lượng tự nhiên của cung hoàng đạo đó (ví dụ: nguyên tố Khí linh hoạt của Song Tử, nguyên tố Đất kiên nhẫn của Ma Kết...) cùng những đặc trưng hành vi của con số chủ đạo đó (ví dụ: số 7 - người tìm kiếm chân lý, số 11 - trực giác tâm linh...) đang bổ trợ tích cực hay cản trở/tạo ra nút thắt nào đối với câu hỏi cụ thể của họ.\n" +
-                "- Bài luận giải phải đan cài nhuần nhuyễn cả 3 yếu tố (Tarot, Cung hoàng đạo, Số chủ đạo) để đưa ra câu trả lời thuyết phục, mang tính cá nhân hóa tuyệt đối, cụ thể và thấu suốt nhất.\n\n" +
-                "Hãy trả về kết quả dưới định dạng JSON chính xác như sau (không kèm ký tự markdown ```json):\n" +
+                "Bạn là một bậc thầy Tarot 40 năm kinh nghiệm, kết hợp Chiêm tinh học, Thần số học và Tâm lý học sâu (Carl Jung) để đưa ra những bài đọc siêu thấu cảm và chính xác tối cao.\n\n" +
+                "%s\n" +
+                "=== CÂU HỎI / VẤN ĐỀ ĐẶT RA ===\n" +
+                "%s\n\n" +
+                "=== NHIỆM VỤ CỦA BẠN ===\n" +
+                "1. ĐỌC kỹ toàn bộ hồ sơ cá nhân bên trên (tên, ngày sinh, cung hoàng đạo, số chủ đạo, kiểu tính cách, giai đoạn cuộc sống, mức năng lượng, lĩnh vực cần soi, phạm vi thời gian).\n" +
+                "2. Dựa trên hồ sơ đó, hãy chọn ra đúng 1 lá bài Tarot chuẩn xác nhất từ bộ 78 lá (tên tiếng Anh chuẩn).\n" +
+                "3. Viết bài luận giải sâu sắc bằng tiếng Việt theo 4 tầng phân tích sau (mỗi tầng tối thiểu 60 từ):\n" +
+                "   ● Tầng Chiêm tinh học: Cung hoàng đạo của người dùng đang tương tác thế nào với lá bài này? Nguyên tố (Lửa/Đất/Khí/Nước) hỗ trợ hay cản trở?\n" +
+                "   ● Tầng Thần số học: Số chủ đạo đưa ra thông điệp gì cho vấn đề này? Năng lượng số mệnh hỗ trợ hay là bài học?\n" +
+                "   ● Tầng Tâm lý học (Carl Jung): Kiểu tính cách và giai đoạn cuộc sống hiện tại hé lộ điều gì về nội tâm tiềm thức của họ? Phần Bóng Tối (Shadow) hay Nguyên mẫu (Archetype) nào đang hoạt động?\n" +
+                "   ● Tầng Thực tiễn: Lời khuyên cụ thể dựa trên mức năng lượng và lĩnh vực họ chọn.\n" +
+                "4. Đưa ra advice: Bước hành động cụ thể cho HIỆN TẠI (đủ rõ ràng để làm ngay hôm nay). Tối thiểu 120 từ.\n\n" +
+                "TRẢ VỀ JSON (không markdown ```json):\n" +
                 "{\n" +
-                "  \"cardName\": \"Tên tiếng Anh chính xác của lá bài bạn chọn (ví dụ: 'The Moon' hoặc 'Five of Swords')\",\n" +
-                "  \"message\": \"nội dung luận giải tâm lý chiều sâu tập trung vào vấn đề bằng tiếng Việt...\",\n" +
-                "  \"advice\": \"lời khuyên hành động thực tế tháo gỡ vấn đề bằng tiếng Việt...\"\n" +
+                "  \"cardName\": \"Tên tiếng Anh lá bài (ví dụ: 'The Moon', 'Five of Swords')\",\n" +
+                "  \"message\": \"bài luận giải 4 tầng sâu sắc bằng tiếng Việt...\",\n" +
+                "  \"advice\": \"lời khuyên thực tiễn cụ thể bằng tiếng Việt...\"\n" +
                 "}",
-                description, mood
+                userContext, description
             );
 
             return callGeminiApi(prompt);

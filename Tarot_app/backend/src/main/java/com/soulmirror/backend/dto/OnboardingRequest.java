@@ -7,6 +7,8 @@ import java.time.LocalDate;
 @Data
 public class OnboardingRequest {
     private LocalDate birthDate;
+    private String birthTime;
+    private String birthPlace;
     private String q1LifeFeeling;
     private String q2SupportStyle;
     private String q3Challenge;

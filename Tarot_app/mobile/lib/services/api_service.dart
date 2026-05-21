@@ -10,7 +10,7 @@ class ApiService {
     return prefs.getString('token');
   }
 
-  static Future<Map<String, dynamic>> drawTarot(String moodLevel, [String description = ""]) async {
+  static Future<Map<String, dynamic>> drawTarot(String moodLevel, String description, {String? userName, String? birthDate, String? focusArea, String? timeframe}) async {
     final token = await _getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/tarot/draw'),
@@ -21,7 +21,11 @@ class ApiService {
       body: jsonEncode({
         'currentMood': moodLevel, 
         'numberOfCards': 1,
-        'description': description
+        'description': description,
+        if (userName != null && userName.isNotEmpty) 'userName': userName,
+        if (birthDate != null && birthDate.isNotEmpty) 'birthDate': birthDate,
+        if (focusArea != null) 'focusArea': focusArea,
+        if (timeframe != null) 'timeframe': timeframe,
       }),
     ).timeout(const Duration(seconds: 30));
 

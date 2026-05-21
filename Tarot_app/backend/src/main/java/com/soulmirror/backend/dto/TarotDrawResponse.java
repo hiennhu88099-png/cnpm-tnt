@@ -15,4 +15,5 @@ public class TarotDrawResponse {
     private String emoji;
     private String message;
     private String advice;
+    private boolean isReversed;
 }

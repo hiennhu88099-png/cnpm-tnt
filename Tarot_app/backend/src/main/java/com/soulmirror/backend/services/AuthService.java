@@ -98,6 +98,8 @@ public class AuthService {
         var profile = userProfileRepository.findByUserId(user.getId()).orElseThrow();
 
         profile.setBirthDate(request.getBirthDate());
+        profile.setBirthTime(request.getBirthTime());
+        profile.setBirthPlace(request.getBirthPlace());
         profile.setQ1LifeFeeling(request.getQ1LifeFeeling());
         profile.setQ2SupportStyle(request.getQ2SupportStyle());
         profile.setQ3Challenge(request.getQ3Challenge());
