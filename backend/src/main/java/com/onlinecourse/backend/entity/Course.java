@@ -64,4 +64,9 @@ public class Course {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    // Students may only see PUBLISHED courses whose category is still ACTIVE
+    public boolean isVisibleToPublic() {
+        return status == CourseStatus.PUBLISHED && category.getStatus() == CategoryStatus.ACTIVE;
+    }
+
 }
