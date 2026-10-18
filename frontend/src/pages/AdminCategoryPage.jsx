@@ -129,7 +129,7 @@ export default function AdminCategoryPage() {
               value={form.name}
               onChange={handleChange}
               error={error.fieldErrors.name}
-              maxLength={100}
+              maxLength={150}
               required
             />
             <FormField
