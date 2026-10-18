@@ -9,8 +9,11 @@ export const SITE = {
 // Menu chính trên header. Thêm trang mới vào đây, ví dụ:
 //   TV2: { to: '/courses', label: 'Khóa học' }
 //   TV3: { to: '/my-courses', label: 'Khóa học của tôi', auth: true }   // auth: chỉ hiện khi đã đăng nhập
+//   admin: true -> chỉ hiện với tài khoản ADMIN
 export const MAIN_NAV = [
   { to: '/', label: 'Trang chủ', end: true },
+  { to: '/courses', label: 'Khóa học' },
+  { to: '/admin', label: 'Quản trị', admin: true },
 ];
 
 // Menu bên trái trang "Tài khoản" (AccountLayout)

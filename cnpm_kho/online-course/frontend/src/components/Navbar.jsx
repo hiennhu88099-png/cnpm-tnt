@@ -38,7 +38,7 @@ export default function Navbar() {
     navigate('/');
   };
 
-  const navLinks = MAIN_NAV.filter((link) => !link.auth || isAuthenticated);
+  const navLinks = MAIN_NAV.filter((link) => (!link.auth || isAuthenticated) && (!link.admin || user?.role === 'ADMIN'));
 
   return (
     <header className="site-header">
