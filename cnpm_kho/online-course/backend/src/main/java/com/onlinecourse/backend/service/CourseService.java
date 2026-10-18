@@ -49,8 +49,7 @@ public class CourseService {
     @Transactional(readOnly = true)
     public CourseDetailResponse getPublishedCourse(Long id) {
         Course course = findCourse(id);
-        if (course.getStatus() != CourseStatus.PUBLISHED
-                || course.getCategory().getStatus() != CategoryStatus.ACTIVE) {
+        if (!course.isVisibleToPublic()) {
             throw new ResourceNotFoundException("Course not found");
         }
         return toDetail(course);
