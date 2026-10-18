@@ -408,3 +408,442 @@
     align-items: flex-start;
   }
 }
+
+/* ==========================================================================
+   TV2 - Khóa học: danh sách, chi tiết, trang quản trị
+   ========================================================================== */
+
+/* ---------- Thanh tìm kiếm & bộ lọc ---------- */
+.catalog-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px 200px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.catalog-search {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.catalog-search .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.catalog-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Giữ nội dung cũ trong lúc tải trang/bộ lọc mới, chỉ làm mờ để người dùng không mất vị trí */
+.is-refreshing {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+/* ---------- Phân trang ---------- */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-8);
+}
+
+.pagination-btn {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-muted);
+}
+
+.pagination-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.pagination-btn[aria-current='page'] {
+  color: var(--color-text-inverse);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.pagination-btn:disabled:not([aria-current='page']) {
+  color: var(--color-text-subtle);
+  cursor: not-allowed;
+}
+
+.pagination-gap {
+  padding: 0 var(--space-1);
+  color: var(--color-text-subtle);
+}
+
+/* ---------- Trang chi tiết khóa học ---------- */
+.course-hero {
+  padding: var(--space-10) 0;
+  color: var(--color-text-inverse);
+  background: var(--color-dark);
+}
+
+.course-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
+}
+
+.breadcrumb a:hover {
+  color: var(--color-text-inverse);
+}
+
+.course-hero-title {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-4xl);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.course-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-border-strong);
+}
+
+.course-hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.enroll-card {
+  overflow: hidden;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.enroll-card-thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  color: var(--color-text-inverse);
+  background: var(--color-primary);
+}
+
+.enroll-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.enroll-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.enroll-card-price {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+}
+
+.enroll-card-price.is-free {
+  color: var(--color-success-text);
+}
+
+.enroll-card-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.enroll-card-facts li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.enroll-card-note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Tabs ---------- */
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: -1px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.prose {
+  max-width: 70ch;
+  line-height: 1.75;
+  white-space: pre-line;
+  text-wrap: pretty;
+}
+
+/* ---------- Danh sách bài học (chương trình học) ---------- */
+.lesson-list {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.lesson-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-4) var(--space-5);
+}
+
+.lesson-item + .lesson-item {
+  border-top: 1px solid var(--color-border);
+}
+
+.lesson-order {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-primary-soft-text);
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-full);
+}
+
+.lesson-title {
+  font-weight: 600;
+}
+
+.lesson-desc {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.lesson-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ---------- Trang quản trị ---------- */
+.admin-grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.admin-form-card {
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-6));
+}
+
+.admin-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px 180px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  font-size: var(--text-sm);
+  border-collapse: collapse;
+}
+
+.data-table th {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: left;
+  white-space: nowrap;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-bg);
+}
+
+.data-table tbody tr.is-selected {
+  background: var(--color-primary-soft);
+}
+
+.cell-title {
+  font-weight: 600;
+}
+
+.cell-sub {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.cell-truncate {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.back-link:hover {
+  color: var(--color-primary);
+}
+
+.back-link svg {
+  transform: rotate(180deg);
+}
+
+/* ---------- Responsive (TV2) ---------- */
+@media (max-width: 960px) {
+  .course-hero-grid,
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form-card {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .catalog-toolbar,
+  .admin-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .catalog-search,
+  .admin-toolbar > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .course-hero-title {
+    font-size: var(--text-3xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .catalog-toolbar,
+  .admin-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-item {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .lesson-duration {
+    grid-column: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-refreshing,
+  .pagination-btn,
+  .tab {
+    transition: none;
+  }
+}
