@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { courseAdminApi } from '../api/courseApi';
+import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
 import { Alert, Badge, Button, Card, EmptyState, PageHeader, PageLoading } from '../components/ui';
@@ -39,11 +39,11 @@ export default function AdminCoursePage() {
   }
 
   useEffect(() => {
-    courseAdminApi.getCategories().then(setCategories).catch(() => setCategories([]));
+    courseApi.getAdminCategories().then(setCategories).catch(() => setCategories([]));
   }, []);
 
   const fetchCourses = useCallback(
-    () => courseAdminApi.getCourses({ keyword, categoryId, status, page, size: PAGE_SIZE, sort: 'createdAt,desc' }),
+    () => courseApi.getAdminCourses({ keyword, categoryId, status, page, size: PAGE_SIZE, sort: 'createdAt,desc' }),
     [keyword, categoryId, status, page],
   );
   const { data: result, error, loading, reload } = useApiQuery(fetchCourses);
@@ -66,7 +66,7 @@ export default function AdminCoursePage() {
     setBusyId(course.id);
     setNotice({ type: 'success', text: '' });
     try {
-      await courseAdminApi.deactivateCourse(course.id);
+      await courseApi.deleteCourse(course.id);
       setNotice({ type: 'success', text: `Đã ẩn khóa học “${course.title}”.` });
       reload();
     } catch (err) {
@@ -191,7 +191,7 @@ export default function AdminCoursePage() {
                         <td>
                           <div className="row-actions">
                             <Button variant="ghost" size="sm" to={`/admin/courses/${course.id}/edit`}>Sửa</Button>
-                            <Button variant="ghost" size="sm" to={`/admin/courses/${course.id}/lessons`}>Bài học</Button>
+                            <Button variant="ghost" size="sm" to={`/admin/lessons?courseId=${course.id}`}>Bài học</Button>
                             {course.status !== 'INACTIVE' && (
                               <Button
                                 variant="ghost"

@@ -52,12 +52,13 @@ export default function App() {
 
           {/* TV2 - Quản trị nội dung */}
           <Route element={<AdminLayout />}>
+            {/* Tạm chuyển về Khóa học cho tới khi TV3 thay bằng AdminDashboardPage */}
             <Route path="/admin" element={<Navigate to="/admin/courses" replace />} />
+            <Route path="/admin/categories" element={<AdminCategoryPage />} />
             <Route path="/admin/courses" element={<AdminCoursePage />} />
             <Route path="/admin/courses/new" element={<AdminCourseFormPage />} />
             <Route path="/admin/courses/:id/edit" element={<AdminCourseFormPage />} />
-            <Route path="/admin/courses/:courseId/lessons" element={<AdminLessonPage />} />
-            <Route path="/admin/categories" element={<AdminCategoryPage />} />
+            <Route path="/admin/lessons" element={<AdminLessonPage />} />
           </Route>
         </Route>
 

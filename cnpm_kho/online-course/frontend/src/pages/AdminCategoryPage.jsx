@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { courseAdminApi } from '../api/courseApi';
+import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
 import FormField from '../components/FormField';
@@ -26,8 +26,8 @@ const toPayload = (form) => ({
 });
 
 export default function AdminCategoryPage() {
-  // courseAdminApi.getCategories là hàm cố định của module nên chỉ gọi lại khi reload()
-  const { data, error: loadError, loading, reload } = useApiQuery(courseAdminApi.getCategories);
+  // courseApi.getAdminCategories là hàm cố định của module nên chỉ gọi lại khi reload()
+  const { data, error: loadError, loading, reload } = useApiQuery(courseApi.getAdminCategories);
   const categories = data ?? [];
 
   const [editing, setEditing] = useState(null); // null = đang tạo mới
@@ -59,10 +59,10 @@ export default function AdminCategoryPage() {
     setNotice({ type: 'success', text: '' });
     try {
       if (editing) {
-        await courseAdminApi.updateCategory(editing.id, toPayload(form));
+        await courseApi.updateCategory(editing.id, toPayload(form));
         setNotice({ type: 'success', text: `Đã cập nhật danh mục “${form.name.trim()}”.` });
       } else {
-        await courseAdminApi.createCategory(toPayload(form));
+        await courseApi.createCategory(toPayload(form));
         setNotice({ type: 'success', text: `Đã thêm danh mục “${form.name.trim()}”.` });
       }
       resetForm();
@@ -95,13 +95,13 @@ export default function AdminCategoryPage() {
       `Ngừng sử dụng danh mục “${category.name}”?\nCác khóa học thuộc danh mục này sẽ bị ẩn khỏi trang công khai.`,
     );
     if (!ok) return;
-    await runRowAction(category, () => courseAdminApi.deactivateCategory(category.id), 'Đã ngừng sử dụng');
+    await runRowAction(category, () => courseApi.deleteCategory(category.id), 'Đã ngừng sử dụng');
   };
 
   const handleReactivate = (category) =>
     runRowAction(
       category,
-      () => courseAdminApi.updateCategory(category.id, { ...toPayload(toForm(category)), status: 'ACTIVE' }),
+      () => courseApi.updateCategory(category.id, { ...toPayload(toForm(category)), status: 'ACTIVE' }),
       'Đã kích hoạt lại',
     );
 
@@ -192,10 +192,11 @@ export default function AdminCategoryPage() {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th scope="col">ID</th>
                     <th scope="col">Tên danh mục</th>
                     <th scope="col">Trạng thái</th>
-                    <th scope="col">Cập nhật</th>
-                    <th scope="col"><span className="sr-only">Thao tác</span></th>
+                    <th scope="col">Ngày tạo</th>
+                    <th scope="col">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,6 +205,7 @@ export default function AdminCategoryPage() {
                     const busy = busyId === category.id;
                     return (
                       <tr key={category.id} className={editing?.id === category.id ? 'is-selected' : undefined}>
+                        <td className="text-muted">#{category.id}</td>
                         <td>
                           <div className="cell-title">{category.name}</div>
                           {category.description && (
@@ -211,7 +213,7 @@ export default function AdminCategoryPage() {
                           )}
                         </td>
                         <td><Badge variant={status.variant}>{status.label}</Badge></td>
-                        <td>{formatDate(category.updatedAt)}</td>
+                        <td>{formatDate(category.createdAt)}</td>
                         <td>
                           <div className="row-actions">
                             <Button variant="ghost" size="sm" onClick={() => startEdit(category)} disabled={busy}>
