@@ -3,6 +3,7 @@ import Badge from './Badge';
 import Icon from './Icon';
 import StarRating from './StarRating';
 import { formatPrice } from '../../utils/format';
+import { COURSE_LEVEL_LABELS } from '../../config/site';
 
 // Màu nền thumbnail khi khóa học chưa có ảnh
 const FALLBACK_BACKGROUNDS = [
@@ -41,7 +42,7 @@ export default function CourseCard({ course, to, footer }) {
 
         <div className="course-card-meta">
           {course.lessonCount != null && <span><Icon name="layers" size={14} />{course.lessonCount} bài học</span>}
-          {course.level && <span><Icon name="trendingUp" size={14} />{course.level}</span>}
+          {course.level && <span><Icon name="trendingUp" size={14} />{COURSE_LEVEL_LABELS[course.level] || course.level}</span>}
         </div>
 
         <div className="course-card-footer">

@@ -23,3 +23,10 @@ export const ROLE_LABELS = {
   USER: 'Học viên',
   ADMIN: 'Quản trị viên',
 };
+
+export const COURSE_LEVEL_LABELS = {
+  BEGINNER: 'Cơ bản',
+  INTERMEDIATE: 'Trung cấp',
+  ADVANCED: 'Nâng cao',
+};
+

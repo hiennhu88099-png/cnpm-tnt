@@ -20,3 +20,15 @@ export function GuestRoute() {
   if (isAuthenticated) return <Navigate to="/profile" replace />;
   return <Outlet />;
 }
+
+// Admin pages: only accessible by users with role ADMIN
+export function AdminRoute() {
+  const { user, isAuthenticated, initializing } = useAuth();
+  const location = useLocation();
+
+  if (initializing) return <PageLoading />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (user?.role !== 'ADMIN') return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+

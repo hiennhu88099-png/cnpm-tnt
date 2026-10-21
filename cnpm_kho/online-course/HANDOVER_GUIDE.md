@@ -1,102 +1,115 @@
-# TÀI LIỆU BÀN GIAO NỀN TẢNG VÀ HƯỚNG DẪN PHÁT TRIỂN (DÀNH CHO TV2 & TV3)
+# TÀI LIỆU BÀN GIAO NỀN TẢNG VÀ QUY CHUẨN PHÁT TRIỂN DỰ ÁN
+
 > **Dự án:** Hệ thống Quản lý và Bán Khóa học Online (`online-course`)  
-> **Người biên soạn:** Thành viên 1 (Team Leader) – Phụ trách Nền tảng, Database & Authentication/Security
+> **Người biên soạn:** Thành viên 1 (Team Leader) – Phụ trách Nền tảng, Database & Authentication/Security  
+> **Đối tượng sử dụng:** Toàn bộ thành viên nhóm (TV1, TV2, TV3)
 
 ---
 
-## 1. TỔNG QUAN HỆ THỐNG VÀ KIẾN TRÚC
+## 1. PHÂN CHIA CÔNG VIỆC CHÍNH THỨC CHO NHÓM 3 NGƯỜI
 
-### 1.1. Công nghệ sử dụng
-* **Backend:** Java 21+, Spring Boot 4.x (Maven)
-* **Database:** MySQL 8.0 (chạy qua Docker Compose)
-* **Bảo mật:** Spring Security 6+ Stateless, JWT (HMAC-SHA256)
-* **Frontend:** React 19 + Vite + React Router + Axios
+Mỗi thành viên đều đảm nhiệm trọn vẹn cả **Java Spring Boot**, **MySQL** và **React** theo mô hình Fullstack để nắm chắc luồng dữ liệu toàn hệ thống:
 
-### 1.2. Cách khởi động môi trường làm việc
-1. **Khởi động Database MySQL:**
-   ```bash
-   cd online-course
-   docker compose up -d
-   ```
-   * MySQL: `localhost:3306`, Database: `online_course_db`, User: `root`, Password: `course123`
-   * Web quản trị Adminer: `http://localhost:8082` (Hệ thống: `MySQL`, Máy chủ: `mysql`, Tài khoản: `root`, Mật khẩu: `course123`, CSDL: `online_course_db`)
-
-2. **Khởi động Backend:**
-   * Mở thư mục `online-course/backend` bằng IntelliJ IDEA.
-   * Chạy file `OnlineCourseBackendApplication.java`. Backend lắng nghe tại `http://localhost:8080`.
-
-3. **Khởi động Frontend:**
-   ```bash
-   cd online-course/frontend
-   npm install
-   npm run dev
-   ```
-   * Frontend chạy tại: `http://localhost:5173`.
+| Thành viên | Trách nhiệm Module | Các bảng phụ trách | Bàn giao khi hoàn thành |
+| :--- | :--- | :--- | :--- |
+| **TV1 (Leader)** | **Core System & Authentication** *(Làm trước)* | `users` *(ĐÃ HOÀN TẤT)* | Database chung, Docker MySQL, Spring Boot Architecture, Security, BCrypt, JWT, Register/Login, User Profile, Đổi mật khẩu, Design System React (`/ui-kit`). |
+| **TV2** | **Course Management** *(Quản lý nội dung)* | `categories`, `courses`, `lessons` | Khách/học viên duyệt, tìm kiếm, lọc danh mục, xem chi tiết khóa học và bài học; Admin quản lý danh mục, khóa học và bài học. |
+| **TV3** | **Learning System & Business Logic** *(Học tập & Quản trị)* | `enrollments`, `lesson_progress`, `reviews` | Học viên đăng ký khóa học, học bài trực tuyến (video player), tích điểm tiến độ %, viết đánh giá; Admin quản lý người dùng, duyệt đánh giá và Dashboard thống kê. |
 
 ---
 
-## 2. PHÂN CHIA NHIỆM VỤ TIẾP THEO
+## 2. THỨ TỰ VÀ QUY TRÌNH TRIỂN KHAI CỦA CẢ NHÓM
 
-Project gồm **7 bảng** đã chốt. Team Leader đã hoàn thành nền tảng và bảng **1. users**.
+```
+BẠN — TV1
+Docker + MySQL + User + Register/Login
+                 ↓
+JWT + Spring Security + Role
+                 ↓
+Profile + Change Password + API conventions
+                 ↓
+Kiểm thử + merge nền tảng vào main
+                 │
+          ┌──────┴──────┐
+          ▼             ▼
+        TV2             TV3
+   Course Management  Learning System
+          │             │
+          ▼             ▼
+   React Course UI    React Learning UI
+   Admin Course UI    Admin Dashboard
+          │             │
+          └──────┬──────┘
+                 ▼
+        TÍCH HỢP TOÀN HỆ THỐNG
+                 ↓
+         TEST + SỬA LỖI + DEMO
+```
 
-| Thành viên | Trách nhiệm Module | Các bảng phụ trách |
+### Quy trình nhánh GitHub (Git Workflow)
+Sử dụng 3 branch tính năng chính:
+```
+main
+ ├── feature/auth-core       ← TV1
+ ├── feature/course          ← TV2
+ └── feature/learning-admin  ← TV3
+```
+
+1. **Giai đoạn 1:** TV1 hoàn thành nền tảng trên `feature/auth-core`, kiểm thử xong merge vào `main`.
+2. **Giai đoạn 2 (Mốc phối hợp then chốt):**
+   * TV2 checkout `feature/course` từ `main`. TV2 tạo các Entity `Category`, `Course`, `Lesson` và Repository đầu tiên, tạo Pull Request sớm để merge vào `main`.
+   * Nhờ đó, TV3 có thể pull `main` về `feature/learning-admin` và sử dụng trực tiếp các Entity `Course`, `Lesson` làm khóa ngoại mà không phải tự tạo Entity giả.
+3. **Giai đoạn 3:** TV2 và TV3 tiếp tục phát triển song song các chức năng nghiệp vụ, Controller và Giao diện React.
+4. **Giai đoạn 4:** Tạo Pull Request, review chéo và merge vào `main`.
+
+### Bảng phân công Review chéo
+| Người review | Module được review | Nội dung review bắt buộc |
 | :--- | :--- | :--- |
-| **TV1 (Leader)** | Nền tảng, Security, JWT, Quản lý tài khoản User, Frontend Auth | `users` *(ĐÃ HOÀN TẤT)* |
-| **TV2** | **Quản lý Khóa học & Nội dung giảng dạy** | `categories`, `courses`, `lessons` |
-| **TV3** | **Quản lý Đăng ký, Tiến độ học & Đánh giá** | `enrollments`, `lesson_progress`, `reviews` |
-
-> [!WARNING]
-> **Quy tắc quan trọng:** TV2 và TV3 **KHÔNG** chỉnh sửa logic của `User`, `SecurityConfig`, `JwtService`, `AuthController`, `UserService` để tránh gây xung đột Git và hỏng hệ thống bảo mật. Khi cần thông tin người dùng, hãy liên kết `@ManyToOne` đến `User` hoặc lấy `userId` từ JWT token.
+| **TV1** | Course Management của TV2 | Chạy API Postman, kiểm tra phân trang JPA, bảo mật ẩn video URL, test React UI. |
+| **TV2** | Learning System của TV3 | Kiểm tra chống trùng Enrollment, tính % tiến độ, kiểm duyệt review, test React UI. |
+| **TV3** | Authentication/Security của TV1 | Kiểm tra đăng ký, đăng nhập JWT, token invalidation khi đổi pass hoặc bị khóa status. |
 
 ---
 
-## 3. QUY ƯỚC LẬP TRÌNH BACKEND (BẮT BUỘC TUÂN THỦ)
+## 3. THIẾT KẾ DATABASE CHUNG (7 BẢNG)
 
-### 3.1. Cấu trúc thư mục theo Layer
+Tuyệt đối tuân thủ đúng 7 bảng và mối quan hệ sau:
+
 ```
-com.onlinecourse.backend/
-├── config/             # Cấu hình Spring (Security, CORS, JPA)
-├── controller/         # REST Controllers nhận request, trả về ResponseEntity
-├── dto/
-│   ├── request/        # Các Class Request body (có validate @NotNull, @NotBlank,...)
-│   └── response/       # Các Class Response trả về cho client (không trả thẳng Entity)
-├── entity/             # JPA Entities (khai báo bảng database)
-├── exception/          # Custom Exception và GlobalExceptionHandler
-├── repository/         # Spring Data JPA Repositories
-├── security/           # Logic xử lý JWT và phân quyền
-└── service/            # Business Logic nghiệp vụ
+categories  1 ───── N courses 1 ───── N lessons
+
+users       1 ───── N enrollments 1 ───── N lesson_progress
+courses     1 ───── N enrollments
+lessons     1 ─────────────────────────── N lesson_progress
+
+users       1 ───── N reviews
+courses     1 ───── N reviews
 ```
 
-### 3.2. Quy ước API RESTful & Mã phản hồi HTTP
-* `GET /api/...`: Lấy dữ liệu $\rightarrow$ `200 OK`
-* `POST /api/...`: Tạo mới $\rightarrow$ `201 Created`
-* `PUT /api/...`: Cập nhật $\rightarrow$ `200 OK`
-* `DELETE /api/...`: Xóa $\rightarrow$ `204 No Content`
-* Dữ liệu không hợp lệ $\rightarrow$ `400 Bad Request` (tự động xử lý nếu dùng `@Valid` trên Request DTO)
-* Chưa đăng nhập / Token sai $\rightarrow$ `401 Unauthorized`
-* Không đủ quyền (ví dụ User thường gọi API của Admin) $\rightarrow$ `403 Forbidden`
-* Không tìm thấy bản ghi $\rightarrow$ `404 Not Found` (dùng `ResourceNotFoundException`)
-
-### 3.3. Định dạng lỗi đồng nhất (Error Response Format)
-Hệ thống đã có `GlobalExceptionHandler`. Khi gặp lỗi, API sẽ trả về JSON chuẩn:
-```json
-{
-  "status": 400,
-  "message": "Validation error",
-  "errors": {
-    "title": "Title is required",
-    "price": "Price must be greater than 0"
-  },
-  "timestamp": "2026-10-11T15:00:00"
-}
-```
+* **Quy tắc an toàn dữ liệu:**
+  * Không sử dụng `ddl-auto=create` hoặc `create-drop` trong quá trình code (hệ thống đang dùng `update`).
+  * Không xóa volume Docker MySQL để giải quyết lỗi mapping; hãy sửa code JPA.
+  * Bảng `lesson_progress` bắt buộc kiểm tra 2 điều kiện: bài học thuộc đúng khóa học của enrollment, và enrollment thuộc về user đang đăng nhập.
 
 ---
 
-## 4. HƯỚNG DẪN KỸ THUẬT QUAN TRỌNG
+## 4. HƯỚNG DẪN KỸ THUẬT QUAN TRỌNG TỪ TV1
 
-### 4.1. Cách lấy thông tin Người dùng hiện tại trong Controller
-Khi client gửi request kèm Bearer Token, bạn có thể lấy `userId` trực tiếp trong Controller:
+### 4.1. Cấu hình Bảo mật đã thiết lập sẵn trong `SecurityConfig.java`
+TV1 đã cấu hình sẵn trong `SecurityConfig.java`:
+1. **API Công khai (Public):**
+   * `/api/auth/**` (Đăng ký, Đăng nhập)
+   * `GET /api/courses/**` (Xem danh sách khóa học, chi tiết khóa học, xem tóm tắt bài học, xem đánh giá)
+   * `GET /api/categories/**` (Xem danh mục đang hoạt động)
+2. **Method Security:** Đã bật `@EnableMethodSecurity`.
+   * Các method dành riêng cho Quản trị viên chỉ cần gắn:
+     ```java
+     @PreAuthorize("hasRole('ADMIN')")
+     ```
+3. **API Admin chung:** Mọi request bắt đầu bằng `/api/admin/**` tự động yêu cầu role `ADMIN`.
+
+### 4.2. Cách lấy thông tin Người dùng hiện tại trong Controller
+Khi client gửi request kèm Bearer JWT Token, bạn có thể lấy `userId` trực tiếp trong Controller:
 
 ```java
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -104,132 +117,81 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/courses")
-public class CourseController {
+@RequestMapping("/api/enrollments")
+public class EnrollmentController {
 
     @PostMapping
-    public ResponseEntity<CourseResponse> createCourse(
+    public ResponseEntity<EnrollmentResponse> enroll(
             @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody CreateCourseRequest request) {
+            @Valid @RequestBody EnrollRequest request) {
 
-        // Lấy ID của user đang đăng nhập từ Subject của token:
+        // Lấy ID người dùng an toàn từ Subject của JWT:
         Long currentUserId = Long.valueOf(jwt.getSubject());
 
-        // Truyền vào service để xử lý:
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(courseService.createCourse(currentUserId, request));
+                .body(enrollmentService.enrollCourse(currentUserId, request));
     }
 }
 ```
 
-### 4.2. Cách cấu hình Phân quyền (Public / User / Admin)
-* Các API công khai (Public - ai cũng xem được, ví dụ xem danh sách khóa học):
-  * Mở [SecurityConfig.java](file:///f:/Project/cnpm_kho/online-course/backend/src/main/java/com/onlinecourse/backend/config/SecurityConfig.java) và thêm vào danh sách permitAll:
-    ```java
-    .requestMatchers(HttpMethod.GET, "/api/courses/**", "/api/categories/**").permitAll()
-    ```
-* Các API chỉ dành riêng cho Quản trị viên (ADMIN):
-  * Mặc định mọi URL bắt đầu bằng `/api/admin/**` đã được cấu hình yêu cầu role `ADMIN`:
-    ```java
-    .requestMatchers("/api/admin/**").hasRole("ADMIN")
-    ```
-  * Hoặc đặt trực tiếp trong Controller dành cho Admin: `@RequestMapping("/api/admin/courses")`.
-
-### 4.3. Cách tạo Entity liên kết với bảng `users`
-Khi tạo các Entity mới cần liên kết với người dùng (ví dụ: `Enrollment`, `Review`, `Course.instructor`):
-
-```java
-@Entity
-@Table(name = "enrollments")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class Enrollment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    // Khóa ngoại liên kết tới bảng users:
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "course_id", nullable = false)
-    private Course course;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime enrolledAt;
-}
-```
+### 4.3. Cơ chế Khóa tài khoản (`BLOCKED`)
+TV1 đã cài đặt sẵn `ActiveUserTokenValidator`. Khi tài khoản bị đổi trạng thái sang `BLOCKED`:
+* Không thể đăng nhập vào hệ thống (báo lỗi `Account is blocked`).
+* Mọi token JWT hiện có của tài khoản đó sẽ lập tức bị vô hiệu hóa ở request tiếp theo.
 
 ### 4.4. Cách kết nối API Backend vào Giao diện Frontend (React)
-Frontend đã có sẵn một **bộ giao diện mẫu (design system)** — trang mới chỉ cần ghép các component có sẵn, **không tự viết màu / style riêng**.
+Toàn bộ API đã được khai báo mẫu trong `frontend/src/api/courseApi.js`:
+* `courseApi`: Dành cho TV2 (danh mục, khóa học, bài học).
+* `enrollmentApi`: Dành cho TV3 (đăng ký, học bài, tiến độ, đánh giá).
+* `adminApi`: Dành cho TV3 (quản lý user, duyệt review, thống kê dashboard).
 
-* **Xem trực quan mọi component:** chạy frontend rồi mở `http://localhost:5173/ui-kit` (có kèm code mẫu copy được).
-* **Cấu trúc:**
-  ```
-  frontend/src/
-  ├── styles/tokens.css      # màu, cỡ chữ, bo góc, khoảng cách → luôn dùng var(--...)
-  ├── styles/components.css  # style của component dùng chung
-  ├── styles/layout.css      # header, footer, khung trang tài khoản, khung đăng nhập
-  ├── styles/pages.css       # style riêng từng trang → thêm khối mới ở CUỐI file
-  ├── components/ui/         # Button, Card, Alert, Badge, CourseCard, ProgressBar, StarRating,
-  │                          # EmptyState, PageHeader, Avatar, Spinner/PageLoading, Icon
-  ├── components/FormField.jsx  # ô nhập liệu (input / textarea / select) + hiển thị lỗi
-  ├── config/site.js         # tên thương hiệu, menu header (MAIN_NAV), menu tài khoản (ACCOUNT_NAV)
-  ├── data/mockData.js       # dữ liệu khóa học mẫu cho trang chủ (TV2 thay bằng API rồi xóa)
-  └── utils/format.js        # formatPrice (399.000 ₫ / Miễn phí), formatDate, formatNumber
-  ```
-* **Khung một trang mới** (ví dụ trang danh sách khóa học của TV2):
-  ```jsx
-  import { useEffect, useState } from 'react';
-  import { courseApi } from '../api/courseApi';
-  import { parseApiError } from '../api/apiError';
-  import { Alert, CourseCard, EmptyState, PageHeader, PageLoading } from '../components/ui';
+Các Route Guards đã có sẵn trong `frontend/src/auth/RouteGuards.jsx`:
+* `<GuestRoute>`: Dành cho trang Login / Register.
+* `<ProtectedRoute>`: Dành cho trang cần đăng nhập (`/profile`, `/change-password`, `/my-courses`, `/learning/:courseId`).
+* `<AdminRoute>`: Dành riêng cho tài khoản có `role === 'ADMIN'` (các trang `/admin/*`).
 
-  export default function CourseListPage() {
-    const [courses, setCourses] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-
-    useEffect(() => {
-      courseApi.getAllCourses()
-        .then(setCourses)
-        .catch((err) => setError(parseApiError(err).message))
-        .finally(() => setLoading(false));
-    }, []);
-
-    if (loading) return <PageLoading />;
-
-    return (
-      <div className="container section">
-        <PageHeader title="Tất cả khóa học" subtitle="Chọn khóa học phù hợp với bạn" />
-        <Alert variant="error">{error}</Alert>
-        {courses.length === 0 ? (
-          <EmptyState title="Chưa có khóa học nào" />
-        ) : (
-          <div className="course-grid">
-            {courses.map((c) => <CourseCard key={c.id} course={c} to={`/courses/${c.id}`} />)}
-          </div>
-        )}
-      </div>
-    );
-  }
-  ```
-  Sau đó: thêm route trong `App.jsx` (đã có comment chỗ cho TV2/TV3) và thêm link vào `MAIN_NAV` trong `config/site.js`.
-* **Gợi ý theo vai trò:**
-  * **TV2:** `CourseCard` đọc các field `title, instructorName, categoryName, thumbnail, price, originalPrice, averageRating, reviewCount, lessonCount, level` → nên đặt tên field trong `CourseResponse` giống vậy để dùng thẳng. Form tạo/sửa khóa học dùng `FormField` + `form-row` + `form-actions`.
-  * **TV3:** trang "Khóa học của tôi" dùng `<CourseCard course={c} footer={<ProgressBar value={c.progress} />} />`; đánh giá dùng `StarRating`. Muốn thêm mục vào trang Tài khoản: thêm route trong `<Route element={<AccountLayout />}>` và một dòng vào `ACCOUNT_NAV`.
-* **Mẫu API Frontend:** Đã tạo sẵn file [frontend/src/api/courseApi.js](file:///f:/Project/cnpm_kho/online-course/frontend/src/api/courseApi.js) chứa các hàm `courseApi.getAllCourses()`, `courseApi.getCourseById()`, `enrollmentApi.enrollCourse()`,...
-* **Token tự động:** Axios client tại `frontend/src/api/client.js` đã tự động chèn header `Authorization: Bearer <token>` vào mọi request khi người dùng đăng nhập. TV2 và TV3 chỉ cần gọi hàm API mà không cần lo xử lý token bằng tay!
+Xem toàn bộ giao diện mẫu, nút bấm, thẻ khóa học, thanh tiến độ, icon tại: `http://localhost:5173/ui-kit`.
 
 ---
 
-## 5. CHECKLIST BẮT ĐẦU CHO TV2 VÀ TV3
-1. [ ] Clone mã nguồn từ repository của nhóm về máy.
-2. [ ] Khởi động Docker MySQL và IntelliJ chạy thử Backend để thấy console log `Started OnlineCourseBackendApplication`.
-3. [ ] Chạy Frontend (`cd frontend` -> `npm install` -> `npm run dev`) để trải nghiệm luồng Đăng ký / Đăng nhập / Trang chủ tại `http://localhost:5173`, và xem bộ giao diện mẫu tại `http://localhost:5173/ui-kit`.
-4. [ ] Tạo nhánh Git riêng (ví dụ: `feature/course-management` cho TV2, `feature/enrollment-review` cho TV3).
-5. [ ] Tạo Entity và DTO theo đúng quy ước layer nêu trên.
-6. [ ] Tạo Pull Request để Team Leader review trước khi merge vào nhánh chính `main`.
+## 5. TIÊU CHÍ HOÀN THÀNH TASK (DEFINITION OF DONE)
+
+* **TV1 hoàn thành khi:**
+  * Docker MySQL hoạt động ổn định.
+  * Register mã hóa mật khẩu bằng BCrypt.
+  * Login cấp JWT Token hợp lệ.
+  * Profile và Đổi mật khẩu hoạt động tốt (đổi mật khẩu làm vô hiệu hóa token cũ).
+  * Tài liệu bàn giao và task chi tiết rõ ràng.
+* **TV2 hoàn thành khi:**
+  * Thêm, sửa, xem danh mục / khóa học / bài học thành công.
+  * Search, Filter và Pagination trên `/api/courses` chạy đồng thời và chính xác bằng Spring Data JPA.
+  * Học viên thường không gọi được các API Admin (bị từ chối `403 Forbidden`).
+  * API công khai xem bài học không để lộ `video_url`.
+  * Frontend React hiển thị dữ liệu thật từ Backend qua Axios.
+* **TV3 hoàn thành khi:**
+  * Không cho phép đăng ký trùng cùng 1 khóa học.
+  * Người chưa đăng ký không xem được video bài giảng (`/api/learning/...` trả `403`).
+  * Đánh dấu hoàn thành bài học tính đúng % tiến độ (0%, 50%, 100%).
+  * Chỉ người đã học mới được đánh giá khóa học; mỗi người chỉ đánh giá 1 lần.
+  * Các trang quản trị Admin và API `/api/admin/**` chỉ dành riêng cho role `ADMIN`.
+
+---
+
+## 6. KHỞI ĐỘNG DỰ ÁN TRÊN MÁY LOCAL
+
+```bash
+# 1. Khởi động MySQL Docker
+cd online-course
+docker compose up -d
+
+# 2. Khởi động Backend (Spring Boot)
+cd backend
+./mvnw spring-boot:run
+# Backend chạy tại http://localhost:8080
+
+# 3. Khởi động Frontend (React Vite)
+cd ../frontend
+npm install
+npm run dev
+# Frontend chạy tại http://localhost:5173
+```

@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import AccountLayout from './components/AccountLayout';
-import { GuestRoute, ProtectedRoute } from './auth/RouteGuards';
+import { AdminRoute, GuestRoute, ProtectedRoute } from './auth/RouteGuards';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -17,7 +17,8 @@ export default function App() {
         {/* Public: ai cũng xem được */}
         <Route path="/" element={<HomePage />} />
         <Route path="/ui-kit" element={<UiKitPage />} />
-        {/* TV2: <Route path="/courses" element={<CourseListPage />} />, <Route path="/courses/:id" ... /> */}
+        {/* TV2: <Route path="/courses" element={<CourseListPage />} /> */}
+        {/* TV2: <Route path="/courses/:id" element={<CourseDetailPage />} /> */}
 
         {/* Chỉ dành cho khách (đã đăng nhập sẽ bị chuyển về /profile) */}
         <Route element={<GuestRoute />}>
@@ -32,6 +33,18 @@ export default function App() {
             <Route path="/change-password" element={<ChangePasswordPage />} />
           </Route>
           {/* TV3: <Route path="/my-courses" element={<MyCoursesPage />} /> */}
+          {/* TV3: <Route path="/learning/:courseId" element={<LearningPage />} /> */}
+        </Route>
+
+        {/* Dành riêng cho Quản trị viên (Role ADMIN) */}
+        <Route element={<AdminRoute />}>
+          {/* TV3: <Route path="/admin" element={<AdminDashboardPage />} /> */}
+          {/* TV3: <Route path="/admin/users" element={<AdminUserPage />} /> */}
+          {/* TV3: <Route path="/admin/enrollments" element={<AdminEnrollmentPage />} /> */}
+          {/* TV3: <Route path="/admin/reviews" element={<AdminReviewPage />} /> */}
+          {/* TV2: <Route path="/admin/categories" element={<AdminCategoryPage />} /> */}
+          {/* TV2: <Route path="/admin/courses" element={<AdminCoursePage />} /> */}
+          {/* TV2: <Route path="/admin/lessons" element={<AdminLessonPage />} /> */}
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

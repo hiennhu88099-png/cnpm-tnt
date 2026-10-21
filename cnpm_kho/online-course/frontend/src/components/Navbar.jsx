@@ -84,6 +84,12 @@ export default function Navbar() {
                       {item.label}
                     </Link>
                   ))}
+                  {user.role === 'ADMIN' && (
+                    <Link to="/admin" className="dropdown-item" role="menuitem" onClick={closeMenus}>
+                      <Icon name="chart" size={16} />
+                      Trang quản trị
+                    </Link>
+                  )}
                   <div className="dropdown-divider" />
                   <button type="button" className="dropdown-item is-danger" role="menuitem" onClick={handleLogout}>
                     <Icon name="logout" size={16} />
