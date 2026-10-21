@@ -38,6 +38,10 @@ class LessonControllerTest extends CourseApiTestSupport {
                 .build());
     }
 
+    private String lessonsUrl() {
+        return "/api/courses/" + course.getId() + "/lessons";
+    }
+
     private String adminLessonsUrl() {
         return "/api/admin/courses/" + course.getId() + "/lessons";
     }
@@ -79,8 +83,32 @@ class LessonControllerTest extends CourseApiTestSupport {
 
     @Test
     void create_asStudent_returns403() throws Exception {
-        postAs(userToken(), adminLessonsUrl(), lessonJson("Intro", 1))
+        postAs(userToken(), lessonsUrl(), lessonJson("Intro", 1))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void update_asStudent_returns403() throws Exception {
+        Lesson lesson = saveLesson(1, LessonStatus.ACTIVE);
+
+        putAs(userToken(), "/api/lessons/" + lesson.getId(), lessonJson("Hacked", 1))
+                .andExpect(status().isForbidden());
+        assertEquals("Lesson 1", lessonRepository.findById(lesson.getId()).orElseThrow().getTitle());
+    }
+
+    @Test
+    void delete_asStudent_returns403() throws Exception {
+        Lesson lesson = saveLesson(1, LessonStatus.ACTIVE);
+
+        deleteAs(userToken(), "/api/lessons/" + lesson.getId())
+                .andExpect(status().isForbidden());
+        assertEquals(LessonStatus.ACTIVE, lessonRepository.findById(lesson.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void adminList_asStudent_returns403() throws Exception {
+        // The admin listing exposes video URLs, so students must never reach it
+        getAs(userToken(), adminLessonsUrl()).andExpect(status().isForbidden());
     }
 
     // ---- Admin: list / create ----
@@ -99,7 +127,7 @@ class LessonControllerTest extends CourseApiTestSupport {
 
     @Test
     void create_withValidData_returns201Active() throws Exception {
-        postAs(adminToken(), adminLessonsUrl(), lessonJson("Intro", 1))
+        postAs(adminToken(), lessonsUrl(), lessonJson("Intro", 1))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.courseId").value(course.getId()))
@@ -112,7 +140,7 @@ class LessonControllerTest extends CourseApiTestSupport {
     void create_withDuplicateOrderInSameCourse_returns400() throws Exception {
         saveLesson(1, LessonStatus.ACTIVE);
 
-        postAs(adminToken(), adminLessonsUrl(), lessonJson("Another", 1))
+        postAs(adminToken(), lessonsUrl(), lessonJson("Another", 1))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.lessonOrder").exists());
     }
@@ -127,20 +155,20 @@ class LessonControllerTest extends CourseApiTestSupport {
                 .level(CourseLevel.BEGINNER)
                 .build());
 
-        postAs(adminToken(), "/api/admin/courses/" + other.getId() + "/lessons", lessonJson("Intro", 1))
+        postAs(adminToken(), "/api/courses/" + other.getId() + "/lessons", lessonJson("Intro", 1))
                 .andExpect(status().isCreated());
     }
 
     @Test
     void create_withNonPositiveOrder_returns400() throws Exception {
-        postAs(adminToken(), adminLessonsUrl(), lessonJson("Intro", 0))
+        postAs(adminToken(), lessonsUrl(), lessonJson("Intro", 0))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.lessonOrder").exists());
     }
 
     @Test
     void create_withBlankTitle_returns400() throws Exception {
-        postAs(adminToken(), adminLessonsUrl(), lessonJson("  ", 1))
+        postAs(adminToken(), lessonsUrl(), lessonJson("  ", 1))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").exists());
     }
@@ -149,14 +177,14 @@ class LessonControllerTest extends CourseApiTestSupport {
     void create_withNonHttpVideoUrl_returns400() throws Exception {
         String json = lessonJson("Intro", 1).replace("https://video.example/1.mp4", "javascript:alert(1)");
 
-        postAs(adminToken(), adminLessonsUrl(), json)
+        postAs(adminToken(), lessonsUrl(), json)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.videoUrl").exists());
     }
 
     @Test
     void create_inUnknownCourse_returns404() throws Exception {
-        postAs(adminToken(), "/api/admin/courses/999999/lessons", lessonJson("Intro", 1))
+        postAs(adminToken(), "/api/courses/999999/lessons", lessonJson("Intro", 1))
                 .andExpect(status().isNotFound());
     }
 
@@ -166,7 +194,7 @@ class LessonControllerTest extends CourseApiTestSupport {
     void update_keepingSameOrder_succeeds() throws Exception {
         Lesson lesson = saveLesson(1, LessonStatus.ACTIVE);
 
-        putAs(adminToken(), "/api/admin/lessons/" + lesson.getId(), lessonJson("Renamed", 1))
+        putAs(adminToken(), "/api/lessons/" + lesson.getId(), lessonJson("Renamed", 1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Renamed"));
     }
@@ -176,14 +204,14 @@ class LessonControllerTest extends CourseApiTestSupport {
         saveLesson(1, LessonStatus.ACTIVE);
         Lesson second = saveLesson(2, LessonStatus.ACTIVE);
 
-        putAs(adminToken(), "/api/admin/lessons/" + second.getId(), lessonJson("Second", 1))
+        putAs(adminToken(), "/api/lessons/" + second.getId(), lessonJson("Second", 1))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.lessonOrder").exists());
     }
 
     @Test
     void update_unknownLesson_returns404() throws Exception {
-        putAs(adminToken(), "/api/admin/lessons/999999", lessonJson("Intro", 1))
+        putAs(adminToken(), "/api/lessons/999999", lessonJson("Intro", 1))
                 .andExpect(status().isNotFound());
     }
 
@@ -191,7 +219,7 @@ class LessonControllerTest extends CourseApiTestSupport {
     void delete_softDeletesLessonAndHidesItPublicly() throws Exception {
         Lesson lesson = saveLesson(1, LessonStatus.ACTIVE);
 
-        deleteAs(adminToken(), "/api/admin/lessons/" + lesson.getId())
+        deleteAs(adminToken(), "/api/lessons/" + lesson.getId())
                 .andExpect(status().isNoContent());
 
         assertEquals(LessonStatus.INACTIVE, lessonRepository.findById(lesson.getId()).orElseThrow().getStatus());

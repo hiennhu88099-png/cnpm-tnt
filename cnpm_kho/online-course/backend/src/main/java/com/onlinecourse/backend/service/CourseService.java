@@ -1,6 +1,8 @@
 package com.onlinecourse.backend.service;
 
+import com.onlinecourse.backend.dto.request.CourseCreateRequest;
 import com.onlinecourse.backend.dto.request.CourseRequest;
+import com.onlinecourse.backend.dto.request.CourseUpdateRequest;
 import com.onlinecourse.backend.dto.response.CourseDetailResponse;
 import com.onlinecourse.backend.dto.response.CourseSummaryResponse;
 import com.onlinecourse.backend.dto.response.LessonSummaryResponse;
@@ -12,13 +14,16 @@ import com.onlinecourse.backend.repository.CategoryRepository;
 import com.onlinecourse.backend.repository.CourseRepository;
 import com.onlinecourse.backend.repository.LessonRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -39,10 +44,8 @@ public class CourseService {
     @Transactional(readOnly = true)
     public PageResponse<CourseSummaryResponse> searchPublished(String keyword, Long categoryId,
                                                                int page, int size, String sort) {
-        return PageResponse.from(
-                courseRepository.search(normalize(keyword), categoryId,
-                        CourseStatus.PUBLISHED, CategoryStatus.ACTIVE, pageable(page, size, sort)),
-                CourseSummaryResponse::from);
+        return toSummaryPage(courseRepository.search(normalize(keyword), categoryId,
+                CourseStatus.PUBLISHED, CategoryStatus.ACTIVE, pageable(page, size, sort)));
     }
 
     // DRAFT/INACTIVE courses and courses of inactive categories are hidden from students
@@ -60,9 +63,8 @@ public class CourseService {
     @Transactional(readOnly = true)
     public PageResponse<CourseSummaryResponse> searchAll(String keyword, Long categoryId, CourseStatus status,
                                                          int page, int size, String sort) {
-        return PageResponse.from(
-                courseRepository.search(normalize(keyword), categoryId, status, null, pageable(page, size, sort)),
-                CourseSummaryResponse::from);
+        return toSummaryPage(courseRepository.search(normalize(keyword), categoryId, status, null,
+                pageable(page, size, sort)));
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +73,7 @@ public class CourseService {
     }
 
     @Transactional
-    public CourseDetailResponse create(CourseRequest request) {
+    public CourseDetailResponse create(CourseCreateRequest request) {
         Course course = new Course();
         apply(course, request);
         course.setStatus(request.getStatus() != null ? request.getStatus() : CourseStatus.DRAFT);
@@ -79,7 +81,7 @@ public class CourseService {
     }
 
     @Transactional
-    public CourseDetailResponse update(Long id, CourseRequest request) {
+    public CourseDetailResponse update(Long id, CourseUpdateRequest request) {
         Course course = findCourse(id);
         apply(course, request);
         if (request.getStatus() != null) {
@@ -100,6 +102,9 @@ public class CourseService {
     // ---- Helpers ----
 
     private void apply(Course course, CourseRequest request) {
+        if (request.getOriginalPrice() != null && request.getOriginalPrice().compareTo(request.getPrice()) < 0) {
+            throw new FieldValidationException("originalPrice", "Original price must not be lower than price");
+        }
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new FieldValidationException("categoryId", "Category not found"));
 
@@ -108,6 +113,7 @@ public class CourseService {
         course.setDescription(blankToNull(request.getDescription()));
         course.setThumbnail(blankToNull(request.getThumbnail()));
         course.setPrice(request.getPrice());
+        course.setOriginalPrice(request.getOriginalPrice());
         course.setInstructorName(blankToNull(request.getInstructorName()));
         course.setLevel(request.getLevel());
         course.setDuration(request.getDuration());
@@ -119,6 +125,24 @@ public class CourseService {
                 .map(LessonSummaryResponse::from)
                 .toList();
         return CourseDetailResponse.from(course, lessons);
+    }
+
+    private PageResponse<CourseSummaryResponse> toSummaryPage(Page<Course> page) {
+        Map<Long, Long> lessonCounts = countActiveLessons(page.getContent());
+        return PageResponse.from(page,
+                course -> CourseSummaryResponse.from(course, lessonCounts.getOrDefault(course.getId(), 0L)));
+    }
+
+    private Map<Long, Long> countActiveLessons(List<Course> courses) {
+        if (courses.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = courses.stream().map(Course::getId).toList();
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : lessonRepository.countByCourseIds(ids, LessonStatus.ACTIVE)) {
+            counts.put((Long) row[0], (Long) row[1]);
+        }
+        return counts;
     }
 
     private Course findCourse(Long id) {

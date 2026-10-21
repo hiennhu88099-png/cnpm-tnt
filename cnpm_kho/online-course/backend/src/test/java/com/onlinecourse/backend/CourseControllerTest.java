@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class CourseControllerTest extends CourseApiTestSupport {
 
+    private static final String URL = "/api/courses";
     private static final String ADMIN_URL = "/api/admin/courses";
 
     private Category saveCategory(String name, CategoryStatus status) {
@@ -64,6 +65,28 @@ class CourseControllerTest extends CourseApiTestSupport {
                 .andExpect(jsonPath("$.content[0].title").value("Published"))
                 .andExpect(jsonPath("$.content[0].categoryName").value("Java"))
                 .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void publicList_returnsCourseCardFields() throws Exception {
+        Category java = saveCategory("Java", CategoryStatus.ACTIVE);
+        Course course = saveCourse(java, "Spring", CourseStatus.PUBLISHED, "100");
+        course.setOriginalPrice(new BigDecimal("300"));
+        courseRepository.save(course);
+        saveLesson(course, 1, LessonStatus.ACTIVE);
+        saveLesson(course, 2, LessonStatus.ACTIVE);
+        saveLesson(course, 3, LessonStatus.INACTIVE);
+        saveCourse(java, "Empty", CourseStatus.PUBLISHED, "0");
+
+        getPublic("/api/courses?sort=title,desc")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].title").value("Spring"))
+                .andExpect(jsonPath("$.content[0].originalPrice").value(300))
+                .andExpect(jsonPath("$.content[0].lessonCount").value(2))
+                .andExpect(jsonPath("$.content[0].averageRating").doesNotExist())
+                .andExpect(jsonPath("$.content[0].reviewCount").doesNotExist())
+                .andExpect(jsonPath("$.content[1].title").value("Empty"))
+                .andExpect(jsonPath("$.content[1].lessonCount").value(0));
     }
 
     @Test
@@ -169,8 +192,37 @@ class CourseControllerTest extends CourseApiTestSupport {
     @Test
     void create_asStudent_returns403() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
-        postAs(userToken(), ADMIN_URL, validCourseJson(java.getId()))
+        postAs(userToken(), URL, validCourseJson(java.getId()))
                 .andExpect(status().isForbidden());
+        assertEquals(0, courseRepository.count());
+    }
+
+    @Test
+    void update_asStudent_returns403() throws Exception {
+        Category java = saveCategory("Java", CategoryStatus.ACTIVE);
+        Course course = saveCourse(java, "Original", CourseStatus.PUBLISHED, "100");
+
+        putAs(userToken(), URL + "/" + course.getId(), validCourseJson(java.getId()))
+                .andExpect(status().isForbidden());
+        assertEquals("Original", courseRepository.findById(course.getId()).orElseThrow().getTitle());
+    }
+
+    @Test
+    void delete_asStudent_returns403() throws Exception {
+        Course course = saveCourse(saveCategory("Java", CategoryStatus.ACTIVE), "Live", CourseStatus.PUBLISHED, "100");
+
+        deleteAs(userToken(), URL + "/" + course.getId())
+                .andExpect(status().isForbidden());
+        assertEquals(CourseStatus.PUBLISHED, courseRepository.findById(course.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void adminReads_asStudent_return403() throws Exception {
+        Course course = saveCourse(saveCategory("Java", CategoryStatus.ACTIVE), "Draft", CourseStatus.DRAFT, "100");
+        String token = userToken();
+
+        getAs(token, ADMIN_URL).andExpect(status().isForbidden());
+        getAs(token, ADMIN_URL + "/" + course.getId()).andExpect(status().isForbidden());
     }
 
     // ---- Admin: create ----
@@ -179,7 +231,7 @@ class CourseControllerTest extends CourseApiTestSupport {
     void create_withValidData_returns201AsDraft() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
 
-        postAs(adminToken(), ADMIN_URL, validCourseJson(java.getId()))
+        postAs(adminToken(), URL, validCourseJson(java.getId()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.title").value("Spring Boot"))
@@ -190,7 +242,7 @@ class CourseControllerTest extends CourseApiTestSupport {
 
     @Test
     void create_withUnknownCategory_returns400() throws Exception {
-        postAs(adminToken(), ADMIN_URL, validCourseJson(999999L))
+        postAs(adminToken(), URL, validCourseJson(999999L))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.categoryId").exists());
     }
@@ -200,7 +252,7 @@ class CourseControllerTest extends CourseApiTestSupport {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
         String json = validCourseJson(java.getId()).replace("199000", "-1");
 
-        postAs(adminToken(), ADMIN_URL, json)
+        postAs(adminToken(), URL, json)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.price").exists());
     }
@@ -210,7 +262,7 @@ class CourseControllerTest extends CourseApiTestSupport {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
         String json = validCourseJson(java.getId()).replace("\"Spring Boot\"", "\"  \"");
 
-        postAs(adminToken(), ADMIN_URL, json)
+        postAs(adminToken(), URL, json)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").exists());
     }
@@ -220,9 +272,39 @@ class CourseControllerTest extends CourseApiTestSupport {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
         String json = validCourseJson(java.getId()).replace("\"level\":\"BEGINNER\",", "");
 
-        postAs(adminToken(), ADMIN_URL, json)
+        postAs(adminToken(), URL, json)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.level").exists());
+    }
+
+    @Test
+    void create_withOriginalPrice_returnsIt() throws Exception {
+        Category java = saveCategory("Java", CategoryStatus.ACTIVE);
+        String json = validCourseJson(java.getId()).replace("\"price\":199000", "\"price\":199000,\"originalPrice\":499000");
+
+        postAs(adminToken(), URL, json)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.originalPrice").value(499000));
+    }
+
+    @Test
+    void create_withOriginalPriceBelowPrice_returns400() throws Exception {
+        Category java = saveCategory("Java", CategoryStatus.ACTIVE);
+        String json = validCourseJson(java.getId()).replace("\"price\":199000", "\"price\":199000,\"originalPrice\":99000");
+
+        postAs(adminToken(), URL, json)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.originalPrice").exists());
+    }
+
+    @Test
+    void create_withNegativeOriginalPrice_returns400() throws Exception {
+        Category java = saveCategory("Java", CategoryStatus.ACTIVE);
+        String json = validCourseJson(java.getId()).replace("\"price\":199000", "\"price\":199000,\"originalPrice\":-5");
+
+        postAs(adminToken(), URL, json)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.originalPrice").exists());
     }
 
     // ---- Admin: list / detail / update / delete ----
@@ -259,7 +341,7 @@ class CourseControllerTest extends CourseApiTestSupport {
         Course course = saveCourse(java, "Draft", CourseStatus.DRAFT, "100");
         String json = validCourseJson(java.getId()).replace("\"duration\":600", "\"duration\":600,\"status\":\"PUBLISHED\"");
 
-        putAs(adminToken(), ADMIN_URL + "/" + course.getId(), json)
+        putAs(adminToken(), URL + "/" + course.getId(), json)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Spring Boot"))
                 .andExpect(jsonPath("$.status").value("PUBLISHED"));
@@ -271,7 +353,7 @@ class CourseControllerTest extends CourseApiTestSupport {
     void update_unknownCourse_returns404() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
 
-        putAs(adminToken(), ADMIN_URL + "/999999", validCourseJson(java.getId()))
+        putAs(adminToken(), URL + "/999999", validCourseJson(java.getId()))
                 .andExpect(status().isNotFound());
     }
 
@@ -279,7 +361,7 @@ class CourseControllerTest extends CourseApiTestSupport {
     void delete_softDeletesCourse() throws Exception {
         Course course = saveCourse(saveCategory("Java", CategoryStatus.ACTIVE), "Live", CourseStatus.PUBLISHED, "100");
 
-        deleteAs(adminToken(), ADMIN_URL + "/" + course.getId())
+        deleteAs(adminToken(), URL + "/" + course.getId())
                 .andExpect(status().isNoContent());
 
         assertEquals(CourseStatus.INACTIVE, courseRepository.findById(course.getId()).orElseThrow().getStatus());

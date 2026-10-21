@@ -40,6 +40,10 @@ public class Course {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price = BigDecimal.ZERO;
 
+    // Optional list price shown struck-through on the course card (promotion display)
+    @Column(precision = 12, scale = 2)
+    private BigDecimal originalPrice;
+
     @Column(length = 150)
     private String instructorName;
 

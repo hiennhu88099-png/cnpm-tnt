@@ -3,16 +3,17 @@ package com.onlinecourse.backend.dto.request;
 import com.onlinecourse.backend.entity.CourseLevel;
 import com.onlinecourse.backend.entity.CourseStatus;
 import jakarta.validation.constraints.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
 /**
- * Admin payload for creating or updating a course.
- * status is optional: new courses default to DRAFT, updates keep the current status when it is omitted.
+ * Fields and validation shared by {@link CourseCreateRequest} and {@link CourseUpdateRequest}.
  */
-@Data
-public class CourseRequest {
+@Getter
+@Setter
+public abstract class CourseRequest {
     @NotNull(message = "Category is required")
     private Long categoryId;
 
@@ -31,6 +32,11 @@ public class CourseRequest {
     @DecimalMin(value = "0.0", message = "Price must not be negative")
     @Digits(integer = 10, fraction = 2, message = "Price must have at most 10 digits and 2 decimals")
     private BigDecimal price;
+
+    // Optional; when present it must not be lower than price (checked in CourseService)
+    @DecimalMin(value = "0.0", message = "Original price must not be negative")
+    @Digits(integer = 10, fraction = 2, message = "Original price must have at most 10 digits and 2 decimals")
+    private BigDecimal originalPrice;
 
     @Size(max = 150, message = "Instructor name must be at most 150 characters")
     private String instructorName;

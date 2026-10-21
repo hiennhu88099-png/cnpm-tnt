@@ -23,6 +23,7 @@ public class CourseDetailResponse {
     private String description;
     private String thumbnail;
     private BigDecimal price;
+    private BigDecimal originalPrice;
     private String instructorName;
     private CourseLevel level;
     private Integer duration;
@@ -41,6 +42,7 @@ public class CourseDetailResponse {
                 .description(course.getDescription())
                 .thumbnail(course.getThumbnail())
                 .price(course.getPrice())
+                .originalPrice(course.getOriginalPrice())
                 .instructorName(course.getInstructorName())
                 .level(course.getLevel())
                 .duration(course.getDuration())
