@@ -583,6 +583,19 @@
   color: var(--color-success-text);
 }
 
+.enroll-card-pricing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.enroll-card-price-old {
+  font-size: var(--text-base);
+  color: var(--color-text-subtle);
+  text-decoration: line-through;
+}
+
 .enroll-card-facts {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@ import { Card, Icon } from '../ui';
 
 const ADMIN_NAV = [
   { to: '/admin/courses', label: 'Khóa học', icon: 'book' },
+  { to: '/admin/lessons', label: 'Bài học', icon: 'play' },
   { to: '/admin/categories', label: 'Danh mục', icon: 'layers' },
 ];
 

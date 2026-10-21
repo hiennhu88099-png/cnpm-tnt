@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { courseAdminApi } from '../api/courseApi';
+import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
 import FormField from '../components/FormField';
@@ -11,6 +11,7 @@ const EMPTY_FORM = {
   title: '',
   categoryId: '',
   price: '',
+  originalPrice: '',
   level: 'BEGINNER',
   instructorName: '',
   duration: '',
@@ -24,6 +25,7 @@ const toForm = (course) => ({
   title: course.title,
   categoryId: String(course.categoryId),
   price: course.price ?? '',
+  originalPrice: course.originalPrice ?? '',
   level: course.level,
   instructorName: course.instructorName || '',
   duration: course.duration ?? '',
@@ -39,6 +41,7 @@ const toPayload = (form) => ({
   title: form.title.trim(),
   categoryId: toNumber(form.categoryId),
   price: toNumber(form.price),
+  originalPrice: toNumber(form.originalPrice),
   level: form.level,
   instructorName: toText(form.instructorName),
   duration: toNumber(form.duration),
@@ -60,7 +63,7 @@ export default function AdminCourseFormPage() {
 
   const fetchData = useCallback(
     () =>
-      Promise.all([courseAdminApi.getCategories(), isEdit ? courseAdminApi.getCourse(id) : null]).then(
+      Promise.all([courseApi.getAdminCategories(), isEdit ? courseApi.getAdminCourseById(id) : null]).then(
         ([categories, course]) => ({ categories, course }),
       ),
     [id, isEdit],
@@ -83,12 +86,12 @@ export default function AdminCourseFormPage() {
     try {
       const payload = toPayload(form);
       if (isEdit) {
-        await courseAdminApi.updateCourse(id, payload);
+        await courseApi.updateCourse(id, payload);
         navigate('/admin/courses', { state: { notice: `Đã cập nhật khóa học “${payload.title}”.` } });
       } else {
-        const created = await courseAdminApi.createCourse(payload);
+        const created = await courseApi.createCourse(payload);
         // Tạo xong chuyển thẳng sang trang bài học để thêm nội dung
-        navigate(`/admin/courses/${created.id}/lessons`, {
+        navigate(`/admin/lessons?courseId=${created.id}`, {
           state: { notice: `Đã tạo khóa học “${payload.title}”. Hãy thêm bài học đầu tiên.` },
         });
       }
@@ -202,15 +205,17 @@ export default function AdminCourseFormPage() {
               required
             />
             <FormField
-              label="Thời lượng (phút)"
-              name="duration"
+              label="Giá gốc (VND)"
+              name="originalPrice"
               type="number"
               min="0"
+              step="1000"
               inputMode="numeric"
-              placeholder="600"
-              value={form.duration}
+              placeholder="599000"
+              value={form.originalPrice}
               onChange={handleChange}
-              error={error.fieldErrors.duration}
+              error={error.fieldErrors.originalPrice}
+              hint="Không bắt buộc. Hiển thị gạch ngang khi lớn hơn giá bán."
             />
           </div>
 
@@ -225,19 +230,31 @@ export default function AdminCourseFormPage() {
               maxLength={150}
             />
             <FormField
-              label="Trạng thái"
-              name="status"
-              as="select"
-              value={form.status}
+              label="Thời lượng (phút)"
+              name="duration"
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="600"
+              value={form.duration}
               onChange={handleChange}
-              error={error.fieldErrors.status}
-              hint="Chỉ khóa học Đã xuất bản mới hiện ở trang công khai."
-            >
-              {COURSE_STATUSES.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </FormField>
+              error={error.fieldErrors.duration}
+            />
           </div>
+
+          <FormField
+            label="Trạng thái"
+            name="status"
+            as="select"
+            value={form.status}
+            onChange={handleChange}
+            error={error.fieldErrors.status}
+            hint="Chỉ khóa học Đã xuất bản mới hiện ở trang công khai."
+          >
+            {COURSE_STATUSES.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </FormField>
 
           <FormField
             label="Ảnh bìa (URL)"

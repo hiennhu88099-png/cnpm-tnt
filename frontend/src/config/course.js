@@ -1,11 +1,9 @@
 // Nhãn tiếng Việt cho các giá trị enum của Category / Course / Lesson (TV2).
 // Badge variant: primary | success | warning | danger | neutral
+import { COURSE_LEVEL_LABELS } from './site';
 
-export const COURSE_LEVELS = [
-  { value: 'BEGINNER', label: 'Cơ bản' },
-  { value: 'INTERMEDIATE', label: 'Trung cấp' },
-  { value: 'ADVANCED', label: 'Nâng cao' },
-];
+// Nhãn cấp độ dùng chung với CourseCard (định nghĩa trong config/site.js)
+export const COURSE_LEVELS = Object.entries(COURSE_LEVEL_LABELS).map(([value, label]) => ({ value, label }));
 
 export const COURSE_STATUSES = [
   { value: 'DRAFT', label: 'Bản nháp', variant: 'warning' },
@@ -33,7 +31,7 @@ export const COURSE_SORTS = [
 
 const findOption = (options, value) => options.find((option) => option.value === value);
 
-export const levelLabel = (value) => findOption(COURSE_LEVELS, value)?.label ?? value;
+export const levelLabel = (value) => COURSE_LEVEL_LABELS[value] ?? value;
 export const statusOption = (options, value) => findOption(options, value) ?? { label: value, variant: 'neutral' };
 
 // 95 -> "1 giờ 35 phút", 40 -> "40 phút"

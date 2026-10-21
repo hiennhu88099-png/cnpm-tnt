@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { courseAdminApi } from '../api/courseApi';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
 import FormField from '../components/FormField';
-import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
+import { Alert, Badge, Button, Card, EmptyState, PageHeader, PageLoading } from '../components/ui';
 import { COURSE_STATUSES, LESSON_STATUSES, formatDuration, statusOption } from '../config/course';
 
 const NO_ERROR = { message: '', fieldErrors: {} };
@@ -41,13 +41,71 @@ const toPayload = (form) => ({
 // Gợi ý thứ tự cho bài học tiếp theo = thứ tự lớn nhất + 1
 const nextOrderOf = (lessons) => lessons.reduce((max, lesson) => Math.max(max, lesson.lessonOrder), 0) + 1;
 
+// Danh sách khóa học cho ô chọn (backend giới hạn tối đa 50 bản ghi mỗi trang)
+const PICKER_SIZE = 50;
+
+// Trang /admin/lessons: chọn khóa học rồi quản lý bài học. Khóa học đã chọn nằm trên URL (?courseId=)
+// để trang danh sách khóa học / form tạo khóa học có thể mở thẳng đúng khóa.
 export default function AdminLessonPage() {
-  const { courseId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const courseId = searchParams.get('courseId') ?? '';
+
+  const fetchCourses = useCallback(() => courseApi.getAdminCourses({ size: PICKER_SIZE, sort: 'title,asc' }), []);
+  const coursesQuery = useApiQuery(fetchCourses);
+  const courses = coursesQuery.data?.content ?? [];
+  // Khóa học mở từ link có thể nằm ngoài 50 khóa đầu tiên: vẫn giữ lựa chọn đó trong ô chọn
+  const selectedMissing = courseId && !courses.some((course) => String(course.id) === courseId);
+
+  const handleSelect = (e) => setSearchParams(e.target.value ? { courseId: e.target.value } : {});
+
+  return (
+    <div className="stack">
+      <PageHeader eyebrow="Quản trị" title="Quản lý bài học" subtitle="Chọn khóa học để xem, thêm và sửa bài học." />
+
+      <Card>
+        <FormField
+          label="Khóa học"
+          name="courseId"
+          as="select"
+          value={courseId}
+          onChange={handleSelect}
+          disabled={coursesQuery.loading && !coursesQuery.data}
+        >
+          <option value="">{coursesQuery.loading && !coursesQuery.data ? 'Đang tải...' : 'Chọn khóa học'}</option>
+          {selectedMissing && <option value={courseId}>Khóa học #{courseId}</option>}
+          {courses.map((course) => (
+            <option key={course.id} value={course.id}>{course.title}</option>
+          ))}
+        </FormField>
+        {coursesQuery.error && (
+          <Alert variant="error">
+            {coursesQuery.error.message}{' '}
+            <button type="button" className="text-link" onClick={coursesQuery.reload}>Thử lại</button>
+          </Alert>
+        )}
+      </Card>
+
+      {courseId ? (
+        // key: đổi khóa học thì dựng lại toàn bộ form/trạng thái của khóa cũ
+        <CourseLessonsManager key={courseId} courseId={courseId} />
+      ) : (
+        <EmptyState
+          icon="layers"
+          title="Chưa chọn khóa học"
+          description="Chọn một khóa học ở ô bên trên để quản lý chương trình học."
+          action={<Button variant="secondary" to="/admin/courses">Về danh sách khóa học</Button>}
+        />
+      )}
+    </div>
+  );
+}
+
+function CourseLessonsManager({ courseId }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const fetchCourse = useCallback(() => courseAdminApi.getCourse(courseId), [courseId]);
-  const fetchLessons = useCallback(() => courseAdminApi.getLessons(courseId), [courseId]);
+  const fetchCourse = useCallback(() => courseApi.getAdminCourseById(courseId), [courseId]);
+  const fetchLessons = useCallback(() => courseApi.getAdminCourseLessons(courseId), [courseId]);
   const courseQuery = useApiQuery(fetchCourse);
   const lessonsQuery = useApiQuery(fetchLessons);
   const course = courseQuery.data;
@@ -62,7 +120,7 @@ export default function AdminLessonPage() {
   const [notice, setNotice] = useState({ type: 'success', text: location.state?.notice ?? '' });
 
   useEffect(() => {
-    if (location.state?.notice) navigate(location.pathname, { replace: true, state: null });
+    if (location.state?.notice) navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
   }, [location, navigate]);
 
   // Lần đầu có danh sách bài học của khóa này: gợi ý thứ tự cho bài tiếp theo
@@ -98,11 +156,11 @@ export default function AdminLessonPage() {
       // Danh sách sau khi lưu (để gợi ý thứ tự mới ngay, không phải chờ tải lại)
       let updatedLessons;
       if (editing) {
-        const saved = await courseAdminApi.updateLesson(editing.id, payload);
+        const saved = await courseApi.updateLesson(editing.id, payload);
         updatedLessons = lessons.map((lesson) => (lesson.id === saved.id ? saved : lesson));
         setNotice({ type: 'success', text: `Đã cập nhật bài học “${payload.title}”.` });
       } else {
-        const saved = await courseAdminApi.createLesson(courseId, payload);
+        const saved = await courseApi.createLesson(courseId, payload);
         updatedLessons = [...lessons, saved];
         setNotice({ type: 'success', text: `Đã thêm bài học “${payload.title}”.` });
       }
@@ -134,13 +192,13 @@ export default function AdminLessonPage() {
   // Xóa mềm: bài học chuyển sang INACTIVE và biến mất khỏi trang chi tiết khóa học
   const handleHide = (lesson) => {
     if (!window.confirm(`Ẩn bài học “${lesson.title}”?`)) return;
-    runRowAction(lesson, () => courseAdminApi.deactivateLesson(lesson.id), 'Đã ẩn');
+    runRowAction(lesson, () => courseApi.deleteLesson(lesson.id), 'Đã ẩn');
   };
 
   const handleShow = (lesson) =>
     runRowAction(
       lesson,
-      () => courseAdminApi.updateLesson(lesson.id, { ...toPayload(toForm(lesson)), status: 'ACTIVE' }),
+      () => courseApi.updateLesson(lesson.id, { ...toPayload(toForm(lesson)), status: 'ACTIVE' }),
       'Đã hiện lại',
     );
 
@@ -163,23 +221,12 @@ export default function AdminLessonPage() {
 
   return (
     <div className="stack">
-      <div>
-        <Link to="/admin/courses" className="back-link">
-          <Icon name="arrowRight" size={16} />
-          Danh sách khóa học
-        </Link>
-        <PageHeader
-          eyebrow="Quản lý bài học"
-          title={course.title}
-          subtitle={
-            <>
-              {course.categoryName} · {lessons.length} bài học ·{' '}
-              <Badge variant={courseStatus.variant}>{courseStatus.label}</Badge>
-            </>
-          }
-          actions={<Button variant="secondary" to={`/admin/courses/${course.id}/edit`}>Sửa khóa học</Button>}
-        />
-      </div>
+      <Card title={course.title} subtitle={`${course.categoryName} · ${lessons.length} bài học`}>
+        <div className="row-actions">
+          <Badge variant={courseStatus.variant}>{courseStatus.label}</Badge>
+          <Button variant="secondary" size="sm" to={`/admin/courses/${course.id}/edit`}>Sửa khóa học</Button>
+        </div>
+      </Card>
 
       <Alert variant={notice.type}>{notice.text}</Alert>
 

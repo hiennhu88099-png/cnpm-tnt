@@ -77,7 +77,12 @@ export default function CourseDetailPage() {
               {course.thumbnail ? <img src={course.thumbnail} alt="" /> : <Icon name="play" size={40} />}
             </div>
             <div className="enroll-card-body">
-              <div className={`enroll-card-price${isFree ? ' is-free' : ''}`}>{formatPrice(course.price)}</div>
+              <div className="enroll-card-pricing">
+                <div className={`enroll-card-price${isFree ? ' is-free' : ''}`}>{formatPrice(course.price)}</div>
+                {!isFree && Number(course.originalPrice) > Number(course.price) && (
+                  <span className="enroll-card-price-old">{formatPrice(course.originalPrice)}</span>
+                )}
+              </div>
 
               {/* TODO(TV3): gọi enrollmentApi.enrollCourse(course.id) khi API đăng ký sẵn sàng */}
               {isAuthenticated ? (

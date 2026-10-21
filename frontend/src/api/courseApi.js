@@ -5,93 +5,121 @@ const cleanParams = (params = {}) =>
   Object.fromEntries(Object.entries(params).filter(([, value]) => value !== '' && value != null));
 
 /**
- * API CÔNG KHAI CỦA TV2 (Danh mục, Khóa học, Bài học) - không cần đăng nhập.
- * Chỉ trả về khóa học PUBLISHED thuộc danh mục ACTIVE; danh sách bài học không bao giờ có videoUrl.
+ * API CỦA THÀNH VIÊN 2 (TV2 - Quản lý Danh mục, Khóa học & Bài học)
+ * - Đọc công khai: chỉ trả danh mục ACTIVE, khóa học PUBLISHED; danh sách bài học không bao giờ có videoUrl.
+ * - Ghi (tạo/sửa/xóa): chỉ ADMIN, backend trả 403 với tài khoản khác. Xóa luôn là xóa mềm (chuyển INACTIVE).
+ * - getAdmin*: chỉ ADMIN, xem được cả bản nháp / đã ẩn (dùng cho trang quản trị).
  */
 export const courseApi = {
-  // Danh mục đang hoạt động
+  // Lấy danh sách danh mục đang hoạt động (Public)
   getCategories: async () => {
     const res = await client.get('/api/categories');
     return res.data;
   },
 
-  // params: { keyword, categoryId, page, size, sort } -> { content, page, size, totalElements, totalPages }
+  // Lấy chi tiết một danh mục (Public)
+  getCategoryById: async (id) => {
+    const res = await client.get(`/api/categories/${id}`);
+    return res.data;
+  },
+
+  // Tạo danh mục mới (Chỉ ADMIN)
+  createCategory: async (categoryData) => {
+    const res = await client.post('/api/categories', categoryData);
+    return res.data;
+  },
+
+  // Cập nhật danh mục (Chỉ ADMIN)
+  updateCategory: async (id, categoryData) => {
+    const res = await client.put(`/api/categories/${id}`, categoryData);
+    return res.data;
+  },
+
+  // Ngừng sử dụng danh mục (Chỉ ADMIN)
+  deleteCategory: async (id) => {
+    const res = await client.delete(`/api/categories/${id}`);
+    return res.data;
+  },
+
+  // Lấy danh sách khóa học (Public, hỗ trợ keyword, categoryId, page, size, sort)
+  // -> { content, page, size, totalElements, totalPages }
   getAllCourses: async (params) => {
     const res = await client.get('/api/courses', { params: cleanParams(params) });
     return res.data;
   },
 
-  // Chi tiết khóa học kèm danh sách bài học tóm tắt (lessons)
+  // Xem chi tiết một khóa học theo ID, kèm danh sách bài học tóm tắt (Public)
   getCourseById: async (id) => {
     const res = await client.get(`/api/courses/${id}`);
     return res.data;
   },
 
+  // Tạo khóa học mới (Chỉ ADMIN)
+  createCourse: async (courseData) => {
+    const res = await client.post('/api/courses', courseData);
+    return res.data;
+  },
+
+  // Cập nhật thông tin khóa học (Chỉ ADMIN)
+  updateCourse: async (id, courseData) => {
+    const res = await client.put(`/api/courses/${id}`, courseData);
+    return res.data;
+  },
+
+  // Ẩn / ngừng xuất bản khóa học (Chỉ ADMIN)
+  deleteCourse: async (id) => {
+    const res = await client.delete(`/api/courses/${id}`);
+    return res.data;
+  },
+
+  // Danh sách bài học công khai của khóa học - không chứa video_url (Public)
   getCourseLessons: async (courseId) => {
     const res = await client.get(`/api/courses/${courseId}/lessons`);
     return res.data;
   },
-};
 
-/**
- * API QUẢN TRỊ CỦA TV2 - chỉ ADMIN (backend chặn 403 với tài khoản khác).
- * Xóa luôn là xóa mềm: bản ghi chuyển sang INACTIVE.
- */
-export const courseAdminApi = {
-  // ---- Danh mục ----
-  getCategories: async () => {
+  // Thêm bài học mới (Chỉ ADMIN)
+  createLesson: async (courseId, lessonData) => {
+    const res = await client.post(`/api/courses/${courseId}/lessons`, lessonData);
+    return res.data;
+  },
+
+  // Cập nhật bài học (Chỉ ADMIN)
+  updateLesson: async (id, lessonData) => {
+    const res = await client.put(`/api/lessons/${id}`, lessonData);
+    return res.data;
+  },
+
+  // Xóa / ẩn bài học (Chỉ ADMIN)
+  deleteLesson: async (id) => {
+    const res = await client.delete(`/api/lessons/${id}`);
+    return res.data;
+  },
+
+  // ---- Chỉ ADMIN: đọc cả dữ liệu đã ẩn / bản nháp cho trang quản trị ----
+
+  // Tất cả danh mục (kể cả INACTIVE)
+  getAdminCategories: async () => {
     const res = await client.get('/api/admin/categories');
     return res.data;
   },
-  createCategory: async (data) => {
-    const res = await client.post('/api/admin/categories', data);
-    return res.data;
-  },
-  updateCategory: async (id, data) => {
-    const res = await client.put(`/api/admin/categories/${id}`, data);
-    return res.data;
-  },
-  deactivateCategory: async (id) => {
-    await client.delete(`/api/admin/categories/${id}`);
-  },
 
-  // ---- Khóa học ----
-  // params: { keyword, categoryId, status, page, size, sort }
-  getCourses: async (params) => {
+  // Tất cả khóa học (kể cả DRAFT / INACTIVE). params: { keyword, categoryId, status, page, size, sort }
+  getAdminCourses: async (params) => {
     const res = await client.get('/api/admin/courses', { params: cleanParams(params) });
     return res.data;
   },
-  getCourse: async (id) => {
+
+  // Chi tiết khóa học bất kỳ trạng thái (dùng cho form sửa)
+  getAdminCourseById: async (id) => {
     const res = await client.get(`/api/admin/courses/${id}`);
     return res.data;
   },
-  createCourse: async (data) => {
-    const res = await client.post('/api/admin/courses', data);
-    return res.data;
-  },
-  updateCourse: async (id, data) => {
-    const res = await client.put(`/api/admin/courses/${id}`, data);
-    return res.data;
-  },
-  deactivateCourse: async (id) => {
-    await client.delete(`/api/admin/courses/${id}`);
-  },
 
-  // ---- Bài học ----
-  getLessons: async (courseId) => {
+  // Tất cả bài học của khóa học (kể cả INACTIVE, có videoUrl)
+  getAdminCourseLessons: async (courseId) => {
     const res = await client.get(`/api/admin/courses/${courseId}/lessons`);
     return res.data;
-  },
-  createLesson: async (courseId, data) => {
-    const res = await client.post(`/api/admin/courses/${courseId}/lessons`, data);
-    return res.data;
-  },
-  updateLesson: async (id, data) => {
-    const res = await client.put(`/api/admin/lessons/${id}`, data);
-    return res.data;
-  },
-  deactivateLesson: async (id) => {
-    await client.delete(`/api/admin/lessons/${id}`);
   },
 };
 

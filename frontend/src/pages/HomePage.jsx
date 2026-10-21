@@ -5,7 +5,6 @@ import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import { Alert, Button, CourseCard, EmptyState, Icon, ProgressBar, Spinner } from '../components/ui';
 import { SITE } from '../config/site';
-import { levelLabel } from '../config/course';
 
 // Biểu tượng xoay vòng cho các ô danh mục (API danh mục không có icon riêng)
 const CATEGORY_ICONS = ['code', 'globe', 'chart', 'cpu', 'briefcase', 'pen'];
@@ -172,7 +171,7 @@ export default function HomePage() {
               {courses.map((course) => (
                 <CourseCard
                   key={course.id}
-                  course={{ ...course, level: levelLabel(course.level) }}
+                  course={course}
                   to={`/courses/${course.id}`}
                 />
               ))}

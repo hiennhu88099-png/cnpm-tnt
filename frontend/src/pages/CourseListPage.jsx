@@ -4,7 +4,7 @@ import { courseApi } from '../api/courseApi';
 import useApiQuery from '../hooks/useApiQuery';
 import { Alert, Button, CourseCard, EmptyState, PageHeader, PageLoading } from '../components/ui';
 import Pagination from '../components/course/Pagination';
-import { COURSE_SORTS, levelLabel } from '../config/course';
+import { COURSE_SORTS } from '../config/course';
 import { formatNumber } from '../utils/format';
 
 const PAGE_SIZE = 12;
@@ -147,7 +147,7 @@ export default function CourseListPage() {
             {courses.map((course) => (
               <CourseCard
                 key={course.id}
-                course={{ ...course, level: levelLabel(course.level) }}
+                course={course}
                 to={`/courses/${course.id}`}
               />
             ))}
