@@ -8,7 +8,7 @@ import { SITE } from '../config/site';
 
 // Biểu tượng xoay vòng cho các ô danh mục (API danh mục không có icon riêng)
 const CATEGORY_ICONS = ['code', 'globe', 'chart', 'cpu', 'briefcase', 'pen'];
-const FEATURED_COUNT = 8;
+const FEATURED_COUNT = 6;
 
 const CATEGORY_COLORS = [
   { background: '#eef2ff', color: '#4f46e5' },
