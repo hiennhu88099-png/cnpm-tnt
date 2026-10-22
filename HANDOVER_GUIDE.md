@@ -181,7 +181,6 @@ Xem toàn bộ giao diện mẫu, nút bấm, thẻ khóa học, thanh tiến đ
 
 ```bash
 # 1. Khởi động MySQL Docker
-cd online-course
 docker compose up -d
 
 # 2. Khởi động Backend (Spring Boot)
