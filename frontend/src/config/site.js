@@ -11,6 +11,7 @@ export const SITE = {
 //   TV3: { to: '/my-courses', label: 'Khóa học của tôi', auth: true }   // auth: chỉ hiện khi đã đăng nhập
 export const MAIN_NAV = [
   { to: '/', label: 'Trang chủ', end: true },
+  { to: '/courses', label: 'Khóa học' },
 ];
 
 // Menu bên trái trang "Tài khoản" (AccountLayout)

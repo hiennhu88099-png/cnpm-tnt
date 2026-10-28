@@ -1,8 +1,14 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
-import { Button, CourseCard, Icon, ProgressBar } from '../components/ui';
+import { courseApi } from '../api/courseApi';
+import { parseApiError } from '../api/apiError';
+import { Alert, Button, CourseCard, EmptyState, Icon, ProgressBar, Spinner } from '../components/ui';
 import { SITE } from '../config/site';
-// TODO(TV2): thay dữ liệu mẫu bằng courseApi.getCategories() / courseApi.getAllCourses()
-import { MOCK_CATEGORIES, MOCK_COURSES } from '../data/mockData';
+
+// Biểu tượng xoay vòng cho các ô danh mục (API danh mục không có icon riêng)
+const CATEGORY_ICONS = ['code', 'globe', 'chart', 'cpu', 'briefcase', 'pen'];
+const FEATURED_COUNT = 6;
 
 const CATEGORY_COLORS = [
   { background: '#eef2ff', color: '#4f46e5' },
@@ -21,6 +27,30 @@ const FEATURES = [
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
+  const [categories, setCategories] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let ignore = false;
+    Promise.all([
+      courseApi.getCategories(),
+      courseApi.getAllCourses({ page: 0, size: FEATURED_COUNT, sort: 'createdAt,desc' }),
+    ])
+      .then(([categoryList, coursePage]) => {
+        if (ignore) return;
+        setCategories(categoryList);
+        setCourses(coursePage.content);
+      })
+      .catch((err) => !ignore && setError(parseApiError(err).message))
+      .finally(() => !ignore && setLoading(false));
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const previewTitle = courses[0]?.title ?? 'Lập trình Web từ cơ bản đến nâng cao';
 
   return (
     <>
@@ -46,7 +76,7 @@ export default function HomePage() {
                   Bắt đầu miễn phí <Icon name="arrowRight" size={18} />
                 </Button>
               )}
-              <a href="#featured-courses" className="btn btn-secondary btn-lg">Xem khóa học</a>
+              <Button variant="secondary" size="lg" to="/courses">Xem khóa học</Button>
             </div>
 
             <div className="hero-stats">
@@ -71,10 +101,10 @@ export default function HomePage() {
                 <span className="hero-preview-play"><Icon name="play" size={24} fill="currentColor" /></span>
               </div>
               <div className="hero-preview-body">
-                <div className="hero-preview-title">{MOCK_COURSES[0].title}</div>
+                <div className="hero-preview-title">{previewTitle}</div>
                 <ProgressBar value={68} label={false} />
                 <div className="hero-preview-meta">
-                  <span>Bài 33 / {MOCK_COURSES[0].lessonCount}</span>
+                  <span>Bài 33 / 48</span>
                   <span>68% hoàn thành</span>
                 </div>
               </div>
@@ -93,44 +123,60 @@ export default function HomePage() {
       </section>
 
       {/* Danh mục */}
-      <section className="section">
-        <div className="container">
-          <div className="section-head">
-            <div>
-              <h2 className="section-title">Khám phá theo danh mục</h2>
-              <p className="section-subtitle">Chọn lĩnh vực bạn quan tâm để bắt đầu.</p>
-            </div>
-          </div>
-          <div className="category-grid">
-            {MOCK_CATEGORIES.map((category, index) => (
-              <div key={category.id} className="category-tile">
-                <span className="category-tile-icon" style={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}>
-                  <Icon name={category.icon} size={22} />
-                </span>
-                <div>
-                  <div className="category-tile-name">{category.name}</div>
-                  <div className="category-tile-count">{category.courseCount} khóa học</div>
-                </div>
+      {categories.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <h2 className="section-title">Khám phá theo danh mục</h2>
+                <p className="section-subtitle">Chọn lĩnh vực bạn quan tâm để bắt đầu.</p>
               </div>
-            ))}
+            </div>
+            <div className="category-grid">
+              {categories.map((category, index) => (
+                <Link key={category.id} to={`/courses?categoryId=${category.id}`} className="category-tile">
+                  <span className="category-tile-icon" style={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}>
+                    <Icon name={CATEGORY_ICONS[index % CATEGORY_ICONS.length]} size={22} />
+                  </span>
+                  <div>
+                    <div className="category-tile-name">{category.name}</div>
+                    <div className="category-tile-count">Xem khóa học</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Khóa học nổi bật */}
-      <section id="featured-courses" className="section section-flush-top">
+      {/* Khóa học mới nhất */}
+      <section id="featured-courses" className={`section${categories.length > 0 ? ' section-flush-top' : ''}`}>
         <div className="container">
           <div className="section-head">
             <div>
-              <h2 className="section-title">Khóa học nổi bật</h2>
-              <p className="section-subtitle">Được học viên đánh giá cao trong tháng này.</p>
+              <h2 className="section-title">Khóa học mới nhất</h2>
+              <p className="section-subtitle">Những khóa học vừa được xuất bản trên {SITE.name}.</p>
             </div>
+            {courses.length > 0 && <Button variant="ghost" to="/courses">Xem tất cả <Icon name="arrowRight" size={16} /></Button>}
           </div>
-          <div className="course-grid">
-            {MOCK_COURSES.map((course) => (
-              <CourseCard key={course.id} course={course} />
-            ))}
-          </div>
+
+          {loading ? (
+            <div className="page-loading"><Spinner size="lg" /><span>Đang tải khóa học...</span></div>
+          ) : error ? (
+            <Alert variant="error">{error}</Alert>
+          ) : courses.length === 0 ? (
+            <EmptyState icon="book" title="Chưa có khóa học nào" description="Các khóa học sẽ xuất hiện ở đây ngay khi được xuất bản." />
+          ) : (
+            <div className="course-grid">
+              {courses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  to={`/courses/${course.id}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
