@@ -4,7 +4,7 @@ import { useAuth } from '../auth/useAuth';
 import { parseApiError } from '../api/apiError';
 import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
-import { Alert, Button } from '../components/ui';
+import { Alert, Button, Icon } from '../components/ui';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -32,39 +32,52 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      title="Chào mừng trở lại"
-      subtitle="Đăng nhập để tiếp tục hành trình học tập của bạn."
-      footer={<>Chưa có tài khoản? <Link to="/register" className="text-link">Đăng ký ngay</Link></>}
+      variant="login"
+      title="Chào Mừng Trở Lại"
+      subtitle="Vui lòng nhập thông tin để đăng nhập."
+      footer={
+        <p className="auth-switch-text">
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="auth-switch-link">
+            Đăng Ký Ngay
+          </Link>
+        </p>
+      }
     >
       <Alert variant="success">{location.state?.notice}</Alert>
       {!Object.keys(error.fieldErrors).length && <Alert variant="error">{error.message}</Alert>}
 
-      <form onSubmit={handleSubmit} noValidate>
+      <form onSubmit={handleSubmit} noValidate className="auth-form">
         <FormField
-          label="Email"
+          label="Địa Chỉ Email"
           name="email"
           type="email"
+          icon="mail"
           autoComplete="email"
           placeholder="ban@example.com"
           value={form.email}
           onChange={handleChange}
           error={error.fieldErrors.email}
+          autoFocus={!location.state?.email}
           required
         />
         <FormField
-          label="Mật khẩu"
+          label="Mật Khẩu"
           name="password"
           type="password"
+          icon="lock"
           autoComplete="current-password"
           placeholder="Nhập mật khẩu"
           value={form.password}
           onChange={handleChange}
           error={error.fieldErrors.password}
+          autoFocus={Boolean(location.state?.email)}
           required
         />
 
-        <Button type="submit" size="lg" block loading={submitting}>
-          {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+        <Button type="submit" size="lg" block loading={submitting} className="auth-submit-btn">
+          <span>{submitting ? 'Đang đăng nhập...' : 'Đăng Nhập'}</span>
+          {!submitting && <Icon name="arrowRight" size={16} />}
         </Button>
       </form>
     </AuthCard>

@@ -1,8 +1,14 @@
 import client from './client';
 
+// Bỏ các tham số rỗng để URL gọn (vd. keyword = '' thì không gửi)
+const cleanParams = (params = {}) =>
+  Object.fromEntries(Object.entries(params).filter(([, value]) => value !== '' && value != null));
+
 /**
- * MẪU API DÀNH CHO THÀNH VIÊN 2 (TV2 - Quản lý Khóa học & Bài học)
- * Khi TV2 hoàn thành các Controller ở Backend, chỉ cần kích hoạt các hàm dưới đây:
+ * API CỦA THÀNH VIÊN 2 (TV2 - Quản lý Danh mục, Khóa học & Bài học)
+ * - Đọc công khai: chỉ trả danh mục ACTIVE, khóa học PUBLISHED; danh sách bài học không bao giờ có videoUrl.
+ * - Ghi (tạo/sửa/xóa): chỉ ADMIN, backend trả 403 với tài khoản khác. Xóa luôn là xóa mềm (chuyển INACTIVE).
+ * - getAdmin*: chỉ ADMIN, xem được cả bản nháp / đã ẩn (dùng cho trang quản trị).
  */
 export const courseApi = {
   // Lấy danh sách danh mục đang hoạt động (Public)
@@ -36,12 +42,13 @@ export const courseApi = {
   },
 
   // Lấy danh sách khóa học (Public, hỗ trợ keyword, categoryId, page, size, sort)
+  // -> { content, page, size, totalElements, totalPages }
   getAllCourses: async (params) => {
-    const res = await client.get('/api/courses', { params });
+    const res = await client.get('/api/courses', { params: cleanParams(params) });
     return res.data;
   },
 
-  // Xem chi tiết một khóa học theo ID (Public)
+  // Xem chi tiết một khóa học theo ID, kèm danh sách bài học tóm tắt (Public)
   getCourseById: async (id) => {
     const res = await client.get(`/api/courses/${id}`);
     return res.data;
@@ -86,6 +93,32 @@ export const courseApi = {
   // Xóa / ẩn bài học (Chỉ ADMIN)
   deleteLesson: async (id) => {
     const res = await client.delete(`/api/lessons/${id}`);
+    return res.data;
+  },
+
+  // ---- Chỉ ADMIN: đọc cả dữ liệu đã ẩn / bản nháp cho trang quản trị ----
+
+  // Tất cả danh mục (kể cả INACTIVE)
+  getAdminCategories: async () => {
+    const res = await client.get('/api/admin/categories');
+    return res.data;
+  },
+
+  // Tất cả khóa học (kể cả DRAFT / INACTIVE). params: { keyword, categoryId, status, page, size, sort }
+  getAdminCourses: async (params) => {
+    const res = await client.get('/api/admin/courses', { params: cleanParams(params) });
+    return res.data;
+  },
+
+  // Chi tiết khóa học bất kỳ trạng thái (dùng cho form sửa)
+  getAdminCourseById: async (id) => {
+    const res = await client.get(`/api/admin/courses/${id}`);
+    return res.data;
+  },
+
+  // Tất cả bài học của khóa học (kể cả INACTIVE, có videoUrl)
+  getAdminCourseLessons: async (courseId) => {
+    const res = await client.get(`/api/admin/courses/${courseId}/lessons`);
     return res.data;
   },
 };
