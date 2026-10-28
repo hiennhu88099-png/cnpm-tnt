@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import useApiQuery from '../hooks/useApiQuery';
-import { Alert, Button, CourseCard, EmptyState, PageHeader, PageLoading } from '../components/ui';
+import { Alert, Button, CourseCard, EmptyState, Icon, PageLoading } from '../components/ui';
 import Pagination from '../components/course/Pagination';
 import { COURSE_SORTS } from '../config/course';
 import { formatNumber } from '../utils/format';
@@ -70,47 +70,65 @@ export default function CourseListPage() {
 
   return (
     <div className="container section">
-      <PageHeader title="Tất cả khóa học" subtitle="Tìm khóa học phù hợp với mục tiêu của bạn." />
-
-      <form className="catalog-toolbar" onSubmit={handleSearch} role="search">
-        <div className="catalog-search">
-          <label htmlFor="course-search" className="sr-only">Tìm khóa học</label>
-          <input
-            id="course-search"
-            className="input"
-            type="search"
-            placeholder="Tìm theo tên hoặc mô tả khóa học..."
-            value={keywordInput}
-            onChange={(e) => setKeywordInput(e.target.value)}
-            maxLength={100}
-          />
-          <Button type="submit">Tìm</Button>
+      <form className="catalog-hero-bar" onSubmit={handleSearch} role="search">
+        <div className="catalog-hero-left">
+          <h1 className="catalog-hero-title">Tất cả khóa học</h1>
+          <div className="catalog-search-pill">
+            <label htmlFor="course-search" className="sr-only">Tìm khóa học</label>
+            <span className="catalog-search-icon" aria-hidden="true">
+              <Icon name="search" size={16} />
+            </span>
+            <input
+              id="course-search"
+              className="catalog-search-input"
+              type="search"
+              placeholder="Tìm kiếm khóa học..."
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              maxLength={100}
+            />
+          </div>
         </div>
 
-        <label htmlFor="course-category" className="sr-only">Danh mục</label>
-        <select
-          id="course-category"
-          className="input"
-          value={categoryId}
-          onChange={(e) => updateParams({ categoryId: e.target.value })}
-        >
-          <option value="">Tất cả danh mục</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>{category.name}</option>
-          ))}
-        </select>
+        <div className="catalog-hero-controls">
+          <div className="catalog-pill-select-wrap">
+            <label htmlFor="course-category" className="sr-only">Danh mục</label>
+            <span className="catalog-pill-icon" aria-hidden="true">
+              <Icon name="sliders" size={16} />
+            </span>
+            <select
+              id="course-category"
+              className="catalog-pill-select has-left-icon"
+              value={categoryId}
+              onChange={(e) => updateParams({ categoryId: e.target.value })}
+            >
+              <option value="">Bộ lọc: Tất cả danh mục</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+            <span className="catalog-pill-chevron" aria-hidden="true">
+              <Icon name="chevronDown" size={16} />
+            </span>
+          </div>
 
-        <label htmlFor="course-sort" className="sr-only">Sắp xếp</label>
-        <select
-          id="course-sort"
-          className="input"
-          value={sort}
-          onChange={(e) => updateParams({ sort: e.target.value })}
-        >
-          {COURSE_SORTS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
+          <div className="catalog-pill-select-wrap is-sort">
+            <label htmlFor="course-sort" className="sr-only">Sắp xếp</label>
+            <select
+              id="course-sort"
+              className="catalog-pill-select"
+              value={sort}
+              onChange={(e) => updateParams({ sort: e.target.value })}
+            >
+              {COURSE_SORTS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <span className="catalog-pill-chevron" aria-hidden="true">
+              <Icon name="chevronDown" size={16} />
+            </span>
+          </div>
+        </div>
       </form>
 
       {error ? (
