@@ -3,7 +3,7 @@ package com.onlinecourse.backend.controller;
 import com.onlinecourse.backend.dto.request.EnrollmentRequest;
 import com.onlinecourse.backend.dto.response.EnrollmentResponse;
 import com.onlinecourse.backend.service.EnrollmentService;
-import com.onlinecourse.backend.service.Tv3UserService;
+import com.onlinecourse.backend.service.CurrentUserService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +21,9 @@ import java.util.List;
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
-    private final Tv3UserService userService;
+    private final CurrentUserService userService;
 
-    // Đăng ký khóa học
+    // ÄÄƒng kÃ½ khÃ³a há»c
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EnrollmentResponse enroll(
@@ -36,7 +36,7 @@ public class EnrollmentController {
         );
     }
 
-    // Danh sách khóa học của tôi
+    // Danh sÃ¡ch khÃ³a há»c cá»§a tÃ´i
     @GetMapping("/my-courses")
     public List<EnrollmentResponse> myCourses(
             @AuthenticationPrincipal Jwt jwt) {
@@ -46,7 +46,7 @@ public class EnrollmentController {
         );
     }
 
-    // Chi tiết đăng ký
+    // Chi tiáº¿t Ä‘Äƒng kÃ½
     @GetMapping("/{id}")
     public EnrollmentResponse detail(
             @AuthenticationPrincipal Jwt jwt,
@@ -58,3 +58,4 @@ public class EnrollmentController {
         );
     }
 }
+
