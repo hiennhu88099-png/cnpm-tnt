@@ -6,12 +6,11 @@ export const SITE = {
   description: 'Học kỹ năng mới mỗi ngày với các khóa học được thiết kế bài bản, theo dõi tiến độ và đánh giá sau mỗi khóa.',
 };
 
-// Menu chính trên header. Thêm trang mới vào đây, ví dụ:
-//   TV2: { to: '/courses', label: 'Khóa học' }
-//   TV3: { to: '/my-courses', label: 'Khóa học của tôi', auth: true }   // auth: chỉ hiện khi đã đăng nhập
+// Menu chính trên header.
 export const MAIN_NAV = [
   { to: '/', label: 'Trang chủ', end: true },
   { to: '/courses', label: 'Khóa học' },
+  { to: '/my-courses', label: 'Khóa học của tôi', auth: true },
 ];
 
 // Menu bên trái trang "Tài khoản" (AccountLayout)
@@ -30,4 +29,3 @@ export const COURSE_LEVEL_LABELS = {
   INTERMEDIATE: 'Trung cấp',
   ADVANCED: 'Nâng cao',
 };
-

@@ -1,23 +1,78 @@
-import { useCallback, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
+import { enrollmentApi } from '../api/enrollmentApi';
+import { reviewApi } from '../api/reviewApi';
 import useApiQuery from '../hooks/useApiQuery';
 import { useAuth } from '../auth/useAuth';
 import { Alert, Button, EmptyState, Icon, PageLoading, StarRating } from '../components/ui';
+import CourseReviews from '../components/CourseReviews';
 import { formatDuration, levelLabel } from '../config/course';
 import { formatPrice } from '../utils/format';
 
 const TABS = [
   { id: 'overview', label: 'Giới thiệu' },
   { id: 'curriculum', label: 'Chương trình học' },
+  { id: 'reviews', label: 'Đánh giá' },
 ];
 
 export default function CourseDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState('');
+  const [reviewSummary, setReviewSummary] = useState(null);
+
   const fetchCourse = useCallback(() => courseApi.getCourseById(id), [id]);
   const { data: course, error, loading } = useApiQuery(fetchCourse);
+
+  // Kiểm tra trạng thái đã đăng ký và lấy điểm đánh giá tổng hợp
+  useEffect(() => {
+    let active = true;
+
+    if (isAuthenticated && id) {
+      enrollmentApi.getMyCourses()
+        .then((data) => {
+          if (!active) return;
+          const list = Array.isArray(data) ? data : data?.content ?? [];
+          const enrolled = list.some((item) => {
+            const courseId = item.course?.id ?? item.courseId ?? item.id;
+            return Number(courseId) === Number(id);
+          });
+          setIsEnrolled(enrolled);
+        })
+        .catch(() => {});
+    }
+
+    if (id) {
+      reviewApi.getSummary(id)
+        .then((sum) => {
+          if (active) setReviewSummary(sum);
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [id, isAuthenticated]);
+
+  async function handleEnroll() {
+    setEnrollError('');
+    setEnrolling(true);
+    try {
+      await enrollmentApi.enrollCourse(id);
+      setIsEnrolled(true);
+      navigate(`/learning/${id}`);
+    } catch (err) {
+      setEnrollError(err.response?.data?.message || 'Không thể đăng ký khóa học. Vui lòng thử lại.');
+    } finally {
+      setEnrolling(false);
+    }
+  }
 
   if (loading) return <PageLoading text="Đang tải khóa học..." />;
 
@@ -47,6 +102,9 @@ export default function CourseDetailPage() {
   const totalMinutes = course.duration || lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0);
   const isFree = Number(course.price) === 0;
 
+  const currentRating = reviewSummary?.averageRating ?? course.averageRating;
+  const currentReviewCount = reviewSummary?.reviewCount ?? course.reviewCount;
+
   return (
     <>
       <section className="course-hero">
@@ -67,8 +125,9 @@ export default function CourseDetailPage() {
               <span><Icon name="trendingUp" size={16} />{levelLabel(course.level)}</span>
               <span><Icon name="layers" size={16} />{lessons.length} bài học</span>
               {totalMinutes > 0 && <span><Icon name="clock" size={16} />{formatDuration(totalMinutes)}</span>}
-              {/* TODO(TV3): điểm đánh giá trung bình (averageRating, reviewCount) khi có API reviews */}
-              {course.averageRating != null && <StarRating value={course.averageRating} count={course.reviewCount} />}
+              {currentRating != null && (
+                <StarRating value={currentRating} count={currentReviewCount} />
+              )}
             </div>
           </div>
 
@@ -84,12 +143,21 @@ export default function CourseDetailPage() {
                 )}
               </div>
 
-              {/* TODO(TV3): gọi enrollmentApi.enrollCourse(course.id) khi API đăng ký sẵn sàng */}
               {isAuthenticated ? (
-                <>
-                  <Button size="lg" block disabled>Đăng ký học</Button>
-                  <p className="enroll-card-note">Chức năng đăng ký khóa học đang được hoàn thiện.</p>
-                </>
+                isEnrolled ? (
+                  <Button size="lg" block to={`/learning/${course.id}`}>Vào học ngay</Button>
+                ) : (
+                  <>
+                    <Button size="lg" block loading={enrolling} onClick={handleEnroll}>
+                      {isFree ? 'Đăng ký học miễn phí' : 'Đăng ký học'}
+                    </Button>
+                    {enrollError && (
+                      <p className="enroll-card-note" style={{ color: 'var(--color-danger, #ef4444)' }}>
+                        {enrollError}
+                      </p>
+                    )}
+                  </>
+                )
               ) : (
                 <Button size="lg" block to="/login">Đăng nhập để đăng ký</Button>
               )}
@@ -119,11 +187,12 @@ export default function CourseDetailPage() {
             >
               {tab.label}
               {tab.id === 'curriculum' && ` (${lessons.length})`}
+              {tab.id === 'reviews' && currentReviewCount != null && ` (${currentReviewCount})`}
             </button>
           ))}
         </div>
 
-        {activeTab === 'overview' ? (
+        {activeTab === 'overview' && (
           <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
             {course.description ? (
               <p className="prose">{course.description}</p>
@@ -131,7 +200,9 @@ export default function CourseDetailPage() {
               <p className="text-muted">Khóa học này chưa có mô tả chi tiết.</p>
             )}
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'curriculum' && (
           <div role="tabpanel" id="panel-curriculum" aria-labelledby="tab-curriculum">
             {lessons.length === 0 ? (
               <EmptyState icon="layers" title="Chưa có bài học" description="Nội dung khóa học đang được chuẩn bị." />
@@ -151,6 +222,12 @@ export default function CourseDetailPage() {
                 ))}
               </ol>
             )}
+          </div>
+        )}
+
+        {activeTab === 'reviews' && (
+          <div role="tabpanel" id="panel-reviews" aria-labelledby="tab-reviews">
+            <CourseReviews courseId={id} />
           </div>
         )}
       </section>

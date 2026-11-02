@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from './Badge';
 import Icon from './Icon';
@@ -5,7 +6,7 @@ import StarRating from './StarRating';
 import { formatPrice } from '../../utils/format';
 import { COURSE_LEVEL_LABELS } from '../../config/site';
 
-// Màu nền thumbnail khi khóa học chưa có ảnh
+// Màu nền thumbnail khi khóa học chưa có ảnh hoặc ảnh lỗi
 const FALLBACK_BACKGROUNDS = [
   'linear-gradient(135deg, #4f46e5, #7c3aed)',
   'linear-gradient(135deg, #0ea5e9, #6366f1)',
@@ -14,24 +15,28 @@ const FALLBACK_BACKGROUNDS = [
   'linear-gradient(135deg, #ec4899, #8b5cf6)',
 ];
 
-/**
- * Thẻ khóa học dùng cho mọi danh sách (trang chủ, danh sách khóa học, khóa học của tôi...).
- * course: { id, title, instructorName, categoryName, thumbnail, price, originalPrice,
- *           averageRating, reviewCount, lessonCount, level }
- * to:     đường dẫn khi bấm vào thẻ (vd. `/courses/${course.id}`); không truyền thì thẻ không bấm được.
- * footer: thay phần giá bằng nội dung khác (vd. thanh tiến độ ở trang "Khóa học của tôi").
- */
 export default function CourseCard({ course, to, footer }) {
+  const [imgError, setImgError] = useState(false);
   const Wrapper = to ? Link : 'div';
   const isFree = Number(course.price) === 0;
+  const showThumb = course.thumbnail && !imgError;
 
   return (
     <Wrapper to={to} className="course-card">
       <div
         className="course-card-thumb"
-        style={course.thumbnail ? undefined : { background: FALLBACK_BACKGROUNDS[course.id % FALLBACK_BACKGROUNDS.length] }}
+        style={showThumb ? undefined : { background: FALLBACK_BACKGROUNDS[course.id % FALLBACK_BACKGROUNDS.length] }}
       >
-        {course.thumbnail ? <img src={course.thumbnail} alt="" loading="lazy" /> : <Icon name="book" size={40} strokeWidth={1.5} />}
+        {showThumb ? (
+          <img
+            src={course.thumbnail}
+            alt={course.title}
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Icon name="book" size={40} strokeWidth={1.5} />
+        )}
         {course.categoryName && <Badge>{course.categoryName}</Badge>}
       </div>
 

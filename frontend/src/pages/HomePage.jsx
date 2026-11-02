@@ -62,7 +62,10 @@ export default function HomePage() {
               <Icon name="graduation" size={14} /> {SITE.tagline}
             </span>
             <h1 className="hero-title">
-              Học kỹ năng mới, <span className="hero-title-highlight">mở lối sự nghiệp</span>
+              Học kỹ năng mới,<br />
+              <span className="hero-title-highlight" style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
+                mở lối sự nghiệp
+              </span>
             </h1>
             <p className="hero-desc">{SITE.description}</p>
 
