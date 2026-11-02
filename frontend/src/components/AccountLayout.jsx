@@ -1,15 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../auth/useAuth';
 import { ACCOUNT_NAV } from '../config/site';
 import { Card, Icon, PageHeader } from './ui';
 
-// Khung chung cho các trang trong mục "Tài khoản": tiêu đề + menu trái + nội dung (Outlet).
-// Thêm trang con: khai báo route bên trong <Route element={<AccountLayout />}> ở App.jsx
-// và thêm một mục vào ACCOUNT_NAV trong config/site.js.
 export default function AccountLayout() {
+  const { user, logout } = useAuth();
+
   return (
     <div className="account-page">
       <div className="container">
-        <PageHeader eyebrow="Tài khoản" title="Cài đặt tài khoản" subtitle="Quản lý thông tin cá nhân và bảo mật đăng nhập của bạn." />
+        <PageHeader
+          eyebrow="Tài khoản"
+          title="Cài đặt tài khoản"
+          subtitle="Quản lý thông tin cá nhân, khóa học đã đăng ký và bảo mật đăng nhập của bạn."
+        />
 
         <div className="account-grid">
           <Card className="side-nav-card">
@@ -20,6 +24,32 @@ export default function AccountLayout() {
                   {item.label}
                 </NavLink>
               ))}
+              <NavLink to="/my-courses" className="side-nav-link">
+                <Icon name="book" size={18} />
+                Khóa học của tôi
+              </NavLink>
+              {user?.role === 'ADMIN' && (
+                <NavLink to="/admin" className="side-nav-link">
+                  <Icon name="sliders" size={18} />
+                  Quản trị hệ thống
+                </NavLink>
+              )}
+              <button
+                type="button"
+                onClick={logout}
+                className="side-nav-link"
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  border: 0,
+                  color: 'var(--color-danger)',
+                  cursor: 'pointer',
+                }}
+              >
+                <Icon name="logOut" size={18} />
+                Đăng xuất
+              </button>
             </nav>
           </Card>
 

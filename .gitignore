@@ -9,6 +9,7 @@ Thumbs.db
 # Backend Build & Temp
 **/target/
 **/.mvn/wrapper/maven-wrapper.jar
+**/uploads/
 
 # Frontend Dependencies & Build
 **/node_modules/
@@ -23,3 +24,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Reference directories (local only)
+frontend_next/
+cnpm_kho/

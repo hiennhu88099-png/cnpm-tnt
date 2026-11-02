@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import AccountLayout from './components/AccountLayout';
 import { AdminRoute, GuestRoute, ProtectedRoute } from './auth/RouteGuards';
@@ -12,10 +12,19 @@ import UiKitPage from './pages/UiKitPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CourseListPage from './pages/CourseListPage';
 import CourseDetailPage from './pages/CourseDetailPage';
+import MyCoursesPage from './pages/MyCoursesPage';
+import LearningPage from './pages/LearningPage';
+import CheckoutPage from './pages/CheckoutPage';
+import SePayPaymentPage from './pages/SePayPaymentPage';
+import CheckoutSuccessPage from './pages/CheckoutSuccessPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminCategoryPage from './pages/AdminCategoryPage';
 import AdminCoursePage from './pages/AdminCoursePage';
 import AdminCourseFormPage from './pages/AdminCourseFormPage';
 import AdminLessonPage from './pages/AdminLessonPage';
+import AdminUserPage from './pages/AdminUserPage';
+import AdminEnrollmentPage from './pages/AdminEnrollmentPage';
+import AdminReviewPage from './pages/AdminReviewPage';
 
 export default function App() {
   return (
@@ -39,26 +48,25 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
           </Route>
-          {/* TV3: <Route path="/my-courses" element={<MyCoursesPage />} /> */}
-          {/* TV3: <Route path="/learning/:courseId" element={<LearningPage />} /> */}
+          <Route path="/my-courses" element={<MyCoursesPage />} />
+          <Route path="/learning/:courseId" element={<LearningPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment/sepay" element={<SePayPaymentPage />} />
+          <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
         </Route>
 
         {/* Dành riêng cho Quản trị viên (Role ADMIN) */}
         <Route element={<AdminRoute />}>
-          {/* TV3: <Route path="/admin" element={<AdminDashboardPage />} /> */}
-          {/* TV3: <Route path="/admin/users" element={<AdminUserPage />} /> */}
-          {/* TV3: <Route path="/admin/enrollments" element={<AdminEnrollmentPage />} /> */}
-          {/* TV3: <Route path="/admin/reviews" element={<AdminReviewPage />} /> */}
-
-          {/* TV2 - Quản trị nội dung */}
           <Route element={<AdminLayout />}>
-            {/* Tạm chuyển về Khóa học cho tới khi TV3 thay bằng AdminDashboardPage */}
-            <Route path="/admin" element={<Navigate to="/admin/courses" replace />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/categories" element={<AdminCategoryPage />} />
             <Route path="/admin/courses" element={<AdminCoursePage />} />
             <Route path="/admin/courses/new" element={<AdminCourseFormPage />} />
             <Route path="/admin/courses/:id/edit" element={<AdminCourseFormPage />} />
             <Route path="/admin/lessons" element={<AdminLessonPage />} />
+            <Route path="/admin/users" element={<AdminUserPage />} />
+            <Route path="/admin/enrollments" element={<AdminEnrollmentPage />} />
+            <Route path="/admin/reviews" element={<AdminReviewPage />} />
           </Route>
         </Route>
 

@@ -295,6 +295,29 @@
   color: var(--color-text-muted);
 }
 
+.avatar-upload-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.avatar-upload-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.avatar-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -1020,5 +1043,1445 @@
   .pagination-btn,
   .tab {
     transition: none;
+  }
+}
+
+
+/* ==========================================================================
+   CHECKOUT, SEPAY QR PAYMENT & ORDER SUCCESS (Modeled on frontend_next)
+   ========================================================================== */
+
+.checkout-page-wrap,
+.sepay-page-wrap,
+.order-success-wrap {
+  min-height: calc(100vh - 64px);
+  padding: 40px 0 80px;
+  background: var(--color-bg);
+}
+
+.checkout-container {
+  max-width: 1180px;
+}
+
+.checkout-breadcrumb {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.checkout-breadcrumb a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.checkout-breadcrumb a:hover {
+  color: var(--color-primary);
+}
+
+.checkout-breadcrumb-sep {
+  color: var(--color-border-strong);
+  user-select: none;
+}
+
+.checkout-breadcrumb-current {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.checkout-main-title {
+  margin: 0 0 36px;
+  font-size: clamp(2rem, 3.6vw, 2.75rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 36px;
+  align-items: start;
+}
+
+.checkout-left {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.checkout-step-card,
+.checkout-summary-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 32px;
+  padding: 32px;
+  box-shadow: 0 18px 42px -18px rgba(15, 23, 42, 0.08);
+}
+
+.checkout-step-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 24px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.checkout-step-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+/* Voucher Input Bar */
+.checkout-voucher-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 20px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.checkout-voucher-input-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.checkout-voucher-input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--color-text-subtle);
+  pointer-events: none;
+}
+
+.checkout-voucher-input {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  border: none;
+  background: transparent;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text);
+  outline: none;
+}
+
+.checkout-voucher-input::placeholder {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text-subtle);
+}
+
+.checkout-voucher-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.checkout-btn-apply {
+  padding: 11px 20px;
+  border-radius: 14px;
+  border: none;
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.checkout-btn-apply:hover {
+  opacity: 0.9;
+}
+
+.checkout-btn-choose-voucher {
+  padding: 11px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.checkout-btn-choose-voucher:hover {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.checkout-coupon-error {
+  margin: 10px 0 0 6px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.checkout-applied-voucher {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(244, 63, 94, 0.06);
+  border: 1px solid rgba(244, 63, 94, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checkout-applied-voucher-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkout-applied-voucher-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f43f5e;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkout-applied-voucher-code {
+  font-size: var(--text-sm);
+  font-weight: 900;
+  color: #e11d48;
+  letter-spacing: 0.04em;
+}
+
+.checkout-applied-voucher-desc {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.checkout-applied-voucher-remove {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.checkout-applied-voucher-remove:hover {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+}
+
+/* Payment Method Options */
+.checkout-methods-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checkout-method-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border-radius: 22px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+
+.checkout-method-option:hover:not(.is-disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.checkout-method-option.is-selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.checkout-method-option.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.checkout-method-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.checkout-method-radio {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+}
+
+.checkout-method-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--color-surface-alt);
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.checkout-method-option.is-selected .checkout-method-icon {
+  background: #ffffff;
+}
+
+.checkout-method-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.checkout-method-title {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.checkout-method-desc {
+  margin-top: 3px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.checkout-method-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.checkout-wallet-balance {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+/* Submit Button */
+.checkout-submit-btn {
+  width: 100%;
+  padding: 22px 28px;
+  border-radius: 24px;
+  border: none;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 18px 36px -12px rgba(37, 99, 235, 0.45);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.checkout-submit-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.checkout-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Right Summary Sidebar */
+.checkout-right {
+  position: sticky;
+  top: 88px;
+}
+
+.checkout-summary-title {
+  margin: 0 0 22px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.checkout-course-item {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.checkout-course-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.checkout-course-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.checkout-course-thumb-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.checkout-course-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkout-course-name {
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+
+.checkout-course-sub {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.checkout-course-price-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.checkout-course-price {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--color-primary);
+}
+
+.checkout-course-price-old {
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+  text-decoration: line-through;
+}
+
+.checkout-summary-Totals {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checkout-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.checkout-summary-row strong {
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.checkout-summary-row.is-discount {
+  color: #e11d48;
+}
+
+.checkout-summary-row.is-discount strong {
+  color: #e11d48;
+}
+
+.checkout-summary-row .is-free-badge {
+  color: #059669;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.checkout-summary-total-row {
+  margin-top: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.checkout-summary-total-row > span:first-child {
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.checkout-summary-total-price {
+  font-size: 1.85rem;
+  font-weight: 900;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Processing Overlay */
+.checkout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.checkout-overlay-card {
+  padding: 36px 44px;
+  border-radius: 36px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+  text-align: center;
+}
+
+.checkout-overlay-spinner-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkout-overlay-spinner {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 4px solid var(--color-primary-soft);
+  border-top-color: var(--color-primary);
+  animation: checkout-spin 0.9s linear infinite;
+}
+
+.checkout-overlay-icon {
+  color: var(--color-primary);
+}
+
+.checkout-overlay-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.checkout-overlay-sub {
+  margin: 6px 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+@keyframes checkout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Voucher Modal */
+.voucher-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.voucher-modal-card {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+}
+
+.voucher-modal-header {
+  padding: 26px 28px 18px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voucher-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.voucher-modal-sub {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.voucher-modal-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.voucher-modal-list {
+  padding: 20px 24px;
+  max-height: 58vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.voucher-item {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.voucher-item:hover:not(.is-disabled) {
+  border-color: var(--color-primary);
+}
+
+.voucher-item.is-selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.voucher-item.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voucher-item-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.voucher-item-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-weight: 900;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.voucher-item-badge.is-selected {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.voucher-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.voucher-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voucher-item-code {
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.voucher-item-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voucher-item-desc {
+  margin: 4px 0 8px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.voucher-item-foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-subtle);
+}
+
+.voucher-item-ineligible {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.voucher-modal-footer {
+  padding: 16px 24px 24px;
+}
+
+.voucher-modal-done-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  border: none;
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   SEPAY QR PAYMENT PAGE
+   ========================================================================== */
+
+.sepay-container {
+  max-width: 1020px;
+}
+
+.sepay-course-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  margin-bottom: 24px;
+}
+
+.sepay-course-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sepay-course-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sepay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 32px;
+  align-items: stretch;
+}
+
+.sepay-qr-card,
+.sepay-info-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 36px;
+  padding: 36px;
+  box-shadow: 0 20px 48px -18px rgba(15, 23, 42, 0.08);
+}
+
+.sepay-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sepay-qr-frame {
+  width: 280px;
+  height: 280px;
+  padding: 16px;
+  border-radius: 28px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sepay-qr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sepay-qr-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.sepay-qr-state.is-success {
+  color: #10b981;
+}
+
+.sepay-qr-state.is-expired {
+  color: #f43f5e;
+}
+
+.sepay-status-bar {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.sepay-status-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sepay-status-waiting strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sepay-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2.5px solid var(--color-primary-soft);
+  border-top-color: var(--color-primary);
+  animation: checkout-spin 0.9s linear infinite;
+}
+
+.sepay-status-done {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: #10b981;
+}
+
+.sepay-refresh-btn {
+  padding: 10px 20px;
+  border-radius: 14px;
+  border: none;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sepay-info-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.sepay-amount-box {
+  margin-bottom: 20px;
+}
+
+.sepay-amount-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.sepay-amount-value {
+  margin-top: 4px;
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+
+.sepay-copy-list {
+  padding: 6px 20px;
+  border-radius: 24px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.sepay-copy-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sepay-copy-row:last-child {
+  border-bottom: none;
+}
+
+.sepay-copy-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-subtle);
+}
+
+.sepay-copy-value {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+.sepay-copy-value.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.sepay-copy-btn {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sepay-copy-btn.is-copied {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #059669;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.sepay-bottom-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sepay-warning-box {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #b45309;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sepay-warning-box p {
+  margin: 0;
+}
+
+.sepay-warning-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sepay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sepay-confirm-btn {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: none;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 14px 28px -10px rgba(37, 99, 235, 0.45);
+}
+
+.sepay-confirm-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.sepay-cancel-btn {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  background: rgba(244, 63, 94, 0.06);
+  color: #e11d48;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.sepay-cancel-btn:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.sepay-modal-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 28px;
+  border-radius: 28px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.sepay-modal-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: rgba(244, 63, 94, 0.1);
+  color: #e11d48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sepay-modal-title {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.sepay-modal-desc {
+  margin: 0 0 22px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sepay-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sepay-modal-keep {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sepay-modal-confirm-cancel {
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  background: #e11d48;
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   CHECKOUT SUCCESS PAGE
+   ========================================================================== */
+
+.order-success-container {
+  max-width: 960px;
+}
+
+.order-success-hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.order-success-badge {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 24px;
+  border-radius: 36px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 18px 40px -14px rgba(16, 185, 129, 0.35);
+}
+
+.order-success-title {
+  margin: 0 0 10px;
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+}
+
+.order-success-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.order-success-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 40px;
+  padding: 44px;
+  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.09);
+}
+
+.order-success-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 44px;
+}
+
+.order-success-summary {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.order-success-section-label {
+  margin: 0 0 20px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-primary);
+}
+
+.order-success-course-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
+.order-success-course-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.order-success-course-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.order-success-course-sub {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.order-success-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.order-success-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.order-success-row strong {
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.order-success-row.is-total {
+  border-bottom: none;
+  padding-top: 14px;
+}
+
+.order-success-row.is-total > span:first-child {
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.order-success-total-price {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: var(--color-primary);
+}
+
+.order-success-auto-box {
+  padding: 20px;
+  border-radius: 24px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.order-success-auto-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #059669;
+  margin-bottom: 6px;
+}
+
+.order-success-auto-box p {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+/* Timeline */
+.order-success-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.order-success-step {
+  display: flex;
+  gap: 16px;
+}
+
+.order-success-step-icon-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.order-success-step-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.order-success-step-icon.is-active {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 10px 22px -6px rgba(37, 99, 235, 0.45);
+}
+
+.order-success-step-line {
+  width: 2px;
+  flex: 1;
+  min-height: 24px;
+  background: rgba(37, 99, 235, 0.25);
+  margin-top: 6px;
+}
+
+.order-success-step-body {
+  padding-top: 4px;
+}
+
+.order-success-step-title {
+  font-weight: 900;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+.order-success-step-desc {
+  margin: 4px 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.order-success-actions {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.order-success-btn {
+  flex: 1;
+  min-width: 180px;
+  padding: 18px 24px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.order-success-btn:hover {
+  transform: translateY(-1px);
+}
+
+.order-success-btn.is-secondary {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.order-success-btn.is-outline {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+.order-success-btn.is-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 14px 30px -10px rgba(37, 99, 235, 0.45);
+}
+
+@media (max-width: 960px) {
+  .checkout-layout,
+  .sepay-grid,
+  .order-success-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-right {
+    position: static;
+  }
+
+  .order-success-card,
+  .sepay-qr-card,
+  .sepay-info-card,
+  .checkout-step-card,
+  .checkout-summary-card {
+    padding: 24px;
+    border-radius: 24px;
   }
 }
