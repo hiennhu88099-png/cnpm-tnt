@@ -15,7 +15,8 @@ Thumbs.db
 **/dist/
 **/.vite/
 *.local
-.env.local
+.env
+.env.*
 
 # Logs
 *.log
