@@ -6,6 +6,7 @@ export default function AdminEnrollmentPage() {
     const [enrollments, setEnrollments] = useState([]);
     const [userId, setUserId] = useState('');
     const [courseId, setCourseId] = useState('');
+    const [keyword, setKeyword] = useState('');
     const [filters, setFilters] = useState({});
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -58,7 +59,8 @@ export default function AdminEnrollmentPage() {
         setPage(0);
         setFilters({
             userId: userId.trim() || undefined,
-            courseId: courseId.trim() || undefined
+            courseId: courseId.trim() || undefined,
+            keyword: keyword.trim() || undefined
         });
     }
 
@@ -76,6 +78,13 @@ export default function AdminEnrollmentPage() {
                     marginBottom: '20px'
                 }}
             >
+                <input
+                    placeholder="Tên/email học viên hoặc tên khóa học"
+                    aria-label="Tìm học viên hoặc khóa học"
+                    value={keyword}
+                    onChange={e => setKeyword(e.target.value)}
+                />
+
                 <input
                     type="number"
                     min="1"
@@ -124,14 +133,12 @@ export default function AdminEnrollmentPage() {
                                         {item.userId}
                                     </td>
                                     <td>
-                                        {item.courseTitle ||
+                                        {item.title ||
                                             item.courseId}
                                     </td>
                                     <td>{item.status}</td>
                                     <td>
-                                        {item.progressPercent ??
-                                            item.progressPercentage ??
-                                            0}%
+                                        {Math.round(item.progress ?? 0)}%
                                     </td>
                                 </tr>
                             ))}

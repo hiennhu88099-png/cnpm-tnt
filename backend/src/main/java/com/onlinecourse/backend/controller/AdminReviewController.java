@@ -3,6 +3,7 @@ package com.onlinecourse.backend.controller;
 import com.onlinecourse.backend.dto.request.ReviewStatusRequest;
 import com.onlinecourse.backend.dto.response.PageResponse;
 import com.onlinecourse.backend.dto.response.ReviewResponse;
+import com.onlinecourse.backend.entity.ReviewStatus;
 import com.onlinecourse.backend.service.ReviewService;
 
 import jakarta.validation.Valid;
@@ -19,10 +20,11 @@ public class AdminReviewController {
     // Admin xem danh sach danh gia
     @GetMapping
     public PageResponse<ReviewResponse> getReviews(
+            @RequestParam(required = false) ReviewStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        return reviewService.adminList(page, size);
+        return reviewService.adminList(status, page, size);
     }
 
     // Admin cap nhat trang thai danh gia

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import client from '../api/client';
+import { useAuth } from '../auth/useAuth';
 
 export default function AdminUserPage() {
+    const { user: currentUser } = useAuth();
 
     const [users, setUsers] = useState([]);
     const [keyword, setKeyword] = useState('');
     const [search, setSearch] = useState('');
     const [role, setRole] = useState('');
+    const [status, setStatus] = useState('');
+    const [updatingId, setUpdatingId] = useState(null);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -26,6 +30,7 @@ export default function AdminUserPage() {
                         params: {
                             keyword: search || undefined,
                             role: role || undefined,
+                            status: status || undefined,
                             page,
                             size: 10
                         }
@@ -56,7 +61,24 @@ export default function AdminUserPage() {
         return () => {
             active = false;
         };
-    }, [search, role, page]);
+    }, [search, role, status, page]);
+
+    async function toggleStatus(user) {
+        const nextStatus = user.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+        const action = nextStatus === 'BLOCKED' ? 'khóa' : 'mở khóa';
+        if (!window.confirm(`Bạn có chắc muốn ${action} tài khoản ${user.email}?`)) return;
+
+        setUpdatingId(user.id);
+        setError('');
+        try {
+            const response = await client.patch(`/api/admin/users/${user.id}/status`, { status: nextStatus });
+            setUsers(current => current.map(item => item.id === user.id ? response.data : item));
+        } catch (err) {
+            setError(err.response?.data?.message || `Không thể ${action} tài khoản`);
+        } finally {
+            setUpdatingId(null);
+        }
+    }
 
     function handleSearch(event) {
         event.preventDefault();
@@ -97,6 +119,12 @@ export default function AdminUserPage() {
                     <option value="ADMIN">Admin</option>
                 </select>
 
+                <select value={status} onChange={e => { setStatus(e.target.value); setPage(0); }} aria-label="Lọc trạng thái">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="ACTIVE">Đang hoạt động</option>
+                    <option value="BLOCKED">Đã khóa</option>
+                </select>
+
                 <button type="submit">
                     Tìm kiếm
                 </button>
@@ -116,6 +144,7 @@ export default function AdminUserPage() {
                                 <th>Email</th>
                                 <th>Vai trò</th>
                                 <th>Trạng thái</th>
+                                <th>Thao tác</th>
                             </tr>
                         </thead>
 
@@ -127,6 +156,7 @@ export default function AdminUserPage() {
                                     <td>{user.email}</td>
                                     <td>{user.role}</td>
                                     <td>{user.status}</td>
+                                    <td><button type="button" disabled={updatingId === user.id || user.id === currentUser?.id} onClick={() => toggleStatus(user)}>{updatingId === user.id ? 'Đang cập nhật…' : user.status === 'ACTIVE' ? 'Khóa' : 'Mở khóa'}</button></td>
                                 </tr>
                             ))}
                         </tbody>

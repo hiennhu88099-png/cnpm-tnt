@@ -109,6 +109,7 @@ public class EnrollmentService {
     public PageResponse<EnrollmentResponse> adminList(
             Long userId,
             Long courseId,
+            String keyword,
             int page,
             int size) {
 
@@ -123,6 +124,7 @@ public class EnrollmentService {
             enrollmentRepository.search(
                 userId,
                 courseId,
+                keyword == null || keyword.isBlank() ? null : keyword.trim(),
                 PageRequest.of(
                     page,
                     size,

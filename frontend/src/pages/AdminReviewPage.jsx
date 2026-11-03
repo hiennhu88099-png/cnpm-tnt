@@ -7,6 +7,7 @@ export default function AdminReviewPage() {
     const [reviews, setReviews] = useState([]);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [status, setStatus] = useState('');
     const [loading, setLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState(null);
     const [error, setError] = useState('');
@@ -18,7 +19,8 @@ export default function AdminReviewPage() {
         try {
             const data = await reviewApi.getAdminReviews({
                 page,
-                size: 10
+                size: 10,
+                status: status || undefined
             });
 
             setReviews(data.content ?? []);
@@ -32,7 +34,7 @@ export default function AdminReviewPage() {
         } finally {
             setLoading(false);
         }
-    }, [page]);
+    }, [page, status]);
 
     useEffect(() => {
         loadReviews();
@@ -63,6 +65,15 @@ export default function AdminReviewPage() {
             <p>
                 Kiểm tra và quản lý các đánh giá khóa học.
             </p>
+
+            <label className="admin-review-filter">Lọc trạng thái
+                <select value={status} onChange={event => { setStatus(event.target.value); setPage(0); }}>
+                    <option value="">Tất cả</option>
+                    <option value="PENDING">Chờ xử lý</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="HIDDEN">Đã ẩn</option>
+                </select>
+            </label>
 
             {error && <p role="alert">{error}</p>}
 
