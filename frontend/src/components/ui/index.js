@@ -9,5 +9,18 @@ export { default as EmptyState } from './EmptyState';
 export { default as Icon } from './Icon';
 export { default as PageHeader } from './PageHeader';
 export { default as ProgressBar } from './ProgressBar';
+export {
+  default as Skeleton,
+  BannerSkeleton,
+  VoucherStripSkeleton,
+  CategoryGridSkeleton,
+  CourseCardSkeleton,
+  CourseGridSkeleton,
+  MyCoursesGridSkeleton,
+  CourseDetailSkeleton,
+  LearningPageSkeleton,
+  AdminTableSkeleton,
+  AdminDashboardSkeleton,
+} from './Skeleton';
 export { default as Spinner, PageLoading } from './Spinner';
 export { default as StarRating } from './StarRating';

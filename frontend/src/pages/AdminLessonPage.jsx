@@ -4,7 +4,7 @@ import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
 import FormField from '../components/FormField';
-import { Alert, Badge, Button, Card, EmptyState, PageHeader, PageLoading } from '../components/ui';
+import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
 import { COURSE_STATUSES, LESSON_STATUSES, formatDuration, statusOption } from '../config/course';
 
 const NO_ERROR = { message: '', fieldErrors: {} };
@@ -334,7 +334,7 @@ function CourseLessonsManager({ courseId }) {
                     <th scope="col">Bài học</th>
                     <th scope="col">Thời lượng</th>
                     <th scope="col">Trạng thái</th>
-                    <th scope="col"><span className="sr-only">Thao tác</span></th>
+                    <th scope="col" className="nx-th-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -352,17 +352,35 @@ function CourseLessonsManager({ courseId }) {
                         <td><Badge variant={status.variant}>{status.label}</Badge></td>
                         <td>
                           <div className="row-actions">
-                            <Button variant="ghost" size="sm" onClick={() => startEdit(lesson)} disabled={busy}>
-                              Sửa
-                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(lesson)}
+                              disabled={busy}
+                              className="nx-action-btn is-edit"
+                            >
+                              <Icon name="pen" size={14} />
+                              <span>Sửa</span>
+                            </button>
                             {lesson.status === 'ACTIVE' ? (
-                              <Button variant="ghost" size="sm" onClick={() => handleHide(lesson)} loading={busy}>
-                                Ẩn
-                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => handleHide(lesson)}
+                                disabled={busy}
+                                className="nx-action-btn is-warning"
+                              >
+                                <Icon name="eyeOff" size={14} />
+                                <span>{busy ? '...' : 'Ẩn'}</span>
+                              </button>
                             ) : (
-                              <Button variant="ghost" size="sm" onClick={() => handleShow(lesson)} loading={busy}>
-                                Hiện lại
-                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => handleShow(lesson)}
+                                disabled={busy}
+                                className="nx-action-btn is-success"
+                              >
+                                <Icon name="eye" size={14} />
+                                <span>{busy ? '...' : 'Hiện lại'}</span>
+                              </button>
                             )}
                           </div>
                         </td>

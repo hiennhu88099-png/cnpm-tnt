@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
-import { Alert, Badge, Button, Card, EmptyState, PageHeader, PageLoading } from '../components/ui';
+import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
 import Pagination from '../components/course/Pagination';
 import { COURSE_STATUSES, levelLabel, statusOption } from '../config/course';
 import { formatDate, formatNumber, formatPrice } from '../utils/format';
@@ -93,6 +93,26 @@ export default function AdminCoursePage() {
       <Alert variant={notice.type}>{notice.text}</Alert>
 
       <Card>
+        <div className="nx-filter-pills" role="tablist" aria-label="Lọc theo trạng thái khóa học">
+          <button
+            type="button"
+            className={`nx-filter-pill${!status ? ' is-active' : ''}`}
+            onClick={() => updateParams({ status: '' })}
+          >
+            <span>Tất cả trạng thái</span>
+          </button>
+          {COURSE_STATUSES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`nx-filter-pill${status === option.value ? ' is-active' : ''}`}
+              onClick={() => updateParams({ status: option.value })}
+            >
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+
         <form className="admin-toolbar" onSubmit={handleSearch} role="search">
           <div className="catalog-search">
             <label htmlFor="admin-course-search" className="sr-only">Tìm khóa học</label>
@@ -172,7 +192,7 @@ export default function AdminCoursePage() {
                     <th scope="col">Trình độ</th>
                     <th scope="col">Trạng thái</th>
                     <th scope="col">Cập nhật</th>
-                    <th scope="col"><span className="sr-only">Thao tác</span></th>
+                    <th scope="col" className="nx-th-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -181,8 +201,19 @@ export default function AdminCoursePage() {
                     return (
                       <tr key={course.id}>
                         <td>
-                          <div className="cell-title cell-truncate">{course.title}</div>
-                          <div className="cell-sub">{course.categoryName}</div>
+                          <div className="nx-course-cell">
+                            <div className="nx-course-thumb">
+                              {course.thumbnail ? (
+                                <img src={course.thumbnail} alt="" loading="lazy" />
+                              ) : (
+                                <Icon name="book" size={20} />
+                              )}
+                            </div>
+                            <div className="nx-course-meta">
+                              <div className="cell-title cell-truncate">{course.title}</div>
+                              <div className="cell-sub">{course.categoryName || 'Chưa phân loại'}</div>
+                            </div>
+                          </div>
                         </td>
                         <td>{formatPrice(course.price)}</td>
                         <td>{levelLabel(course.level)}</td>
@@ -190,17 +221,33 @@ export default function AdminCoursePage() {
                         <td>{formatDate(course.updatedAt)}</td>
                         <td>
                           <div className="row-actions">
-                            <Button variant="ghost" size="sm" to={`/admin/courses/${course.id}/edit`}>Sửa</Button>
-                            <Button variant="ghost" size="sm" to={`/admin/lessons?courseId=${course.id}`}>Bài học</Button>
+                            <Link
+                              to={`/admin/courses/${course.id}/edit`}
+                              className="nx-action-btn is-edit"
+                              title="Chỉnh sửa khóa học"
+                            >
+                              <Icon name="pen" size={14} />
+                              <span>Sửa</span>
+                            </Link>
+                            <Link
+                              to={`/admin/lessons?courseId=${course.id}`}
+                              className="nx-action-btn is-info"
+                              title="Quản lý bài học"
+                            >
+                              <Icon name="layers" size={14} />
+                              <span>Bài học</span>
+                            </Link>
                             {course.status !== 'INACTIVE' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
+                              <button
+                                type="button"
+                                disabled={busyId === course.id}
                                 onClick={() => handleHide(course)}
-                                loading={busyId === course.id}
+                                className="nx-action-btn is-warning"
+                                title="Ẩn khóa học này"
                               >
-                                Ẩn
-                              </Button>
+                                <Icon name="eyeOff" size={14} />
+                                <span>{busyId === course.id ? 'Đang ẩn...' : 'Ẩn'}</span>
+                              </button>
                             )}
                           </div>
                         </td>

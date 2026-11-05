@@ -1,66 +1,182 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import Badge from './Badge';
+import { Link, useNavigate } from 'react-router-dom';
 import Icon from './Icon';
-import StarRating from './StarRating';
 import { formatPrice } from '../../utils/format';
 import { COURSE_LEVEL_LABELS } from '../../config/site';
-
-// Màu nền thumbnail khi khóa học chưa có ảnh hoặc ảnh lỗi
-const FALLBACK_BACKGROUNDS = [
-  'linear-gradient(135deg, #4f46e5, #7c3aed)',
-  'linear-gradient(135deg, #0ea5e9, #6366f1)',
-  'linear-gradient(135deg, #10b981, #0d9488)',
-  'linear-gradient(135deg, #f59e0b, #ef4444)',
-  'linear-gradient(135deg, #ec4899, #8b5cf6)',
-];
+import { useShopStore } from '../../utils/shopStore';
 
 export default function CourseCard({ course, to, footer }) {
   const [imgError, setImgError] = useState(false);
-  const Wrapper = to ? Link : 'div';
-  const isFree = Number(course.price) === 0;
-  const showThumb = course.thumbnail && !imgError;
+  const navigate = useNavigate();
+  const { isInWishlist, toggleWishlist, isInCart, addToCart } = useShopStore();
+
+  const detailPath = to || `/courses/${course.id}`;
+  const price = Number(course.price ?? 0);
+  const originalPrice = Number(course.originalPrice ?? 0);
+  const isFree = price === 0;
+  const hasDiscount = !isFree && originalPrice > price;
+  const discountPercent = hasDiscount
+    ? Math.round((1 - price / originalPrice) * 100)
+    : 0;
+
+  const showThumb = Boolean(course.thumbnail) && !imgError;
+  const wishlisted = isInWishlist(course.id);
+  const inCart = isInCart(course.id);
+  const ratingValue = Number(course.averageRating || 4.8);
+  const reviewCount = Number(course.reviewCount || 0);
+
+  function handleToggleWish(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(course);
+  }
+
+  function handleCartAction(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isFree) {
+      navigate(detailPath);
+      return;
+    }
+    if (inCart) {
+      navigate('/cart');
+      return;
+    }
+    addToCart(course);
+  }
 
   return (
-    <Wrapper to={to} className="course-card">
+    <article className="course-card">
       <div
         className="course-card-thumb"
-        style={showThumb ? undefined : { background: FALLBACK_BACKGROUNDS[course.id % FALLBACK_BACKGROUNDS.length] }}
+        style={showThumb ? undefined : { background: '#f8fafc' }}
       >
-        {showThumb ? (
-          <img
-            src={course.thumbnail}
-            alt={course.title}
-            loading="lazy"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <Icon name="book" size={40} strokeWidth={1.5} />
-        )}
-        {course.categoryName && <Badge>{course.categoryName}</Badge>}
+        <Link to={detailPath} className="course-card-thumb-link" aria-label={course.title}>
+          {showThumb ? (
+            <img
+              src={course.thumbnail}
+              alt={course.title}
+              loading="lazy"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <span className="course-card-thumb-fallback">
+              <Icon name="book" size={42} strokeWidth={1.6} />
+            </span>
+          )}
+        </Link>
+
+        {/* Cụm nhãn góc trên bên trái */}
+        <div className="course-card-badges">
+          {hasDiscount && (
+            <span className="course-card-badge is-discount">-{discountPercent}%</span>
+          )}
+          {isFree && <span className="course-card-badge is-free">MIỄN PHÍ</span>}
+          {course.categoryName && (
+            <span className="course-card-badge is-category">{course.categoryName}</span>
+          )}
+        </div>
+
+        {/* Nút Yêu thích góc trên bên phải */}
+        <button
+          type="button"
+          onClick={handleToggleWish}
+          className={`course-card-wish-btn${wishlisted ? ' is-active' : ''}`}
+          aria-label={wishlisted ? 'Bỏ khỏi yêu thích' : 'Lưu vào yêu thích'}
+          title={wishlisted ? 'Bỏ khỏi danh sách yêu thích' : 'Lưu vào danh sách yêu thích'}
+        >
+          <Icon name="heart" size={16} fill={wishlisted ? 'currentColor' : 'none'} />
+        </button>
+
+        {/* Thanh hành động trượt lên khi rê chuột */}
+        <div className="course-card-hover-cta">
+          <button
+            type="button"
+            onClick={handleCartAction}
+            className={`course-card-hover-btn${inCart ? ' is-in-cart' : ''}`}
+          >
+            <Icon name={isFree ? 'play' : inCart ? 'check' : 'shoppingBag'} size={14} />
+            <span>{isFree ? 'Học miễn phí ngay' : inCart ? 'Đã có trong giỏ' : 'Thêm vào giỏ hàng'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="course-card-body">
-        <h3 className="course-card-title" title={course.title}>{course.title}</h3>
-        {course.instructorName && <div className="course-card-instructor">{course.instructorName}</div>}
-        {course.averageRating != null && <StarRating value={course.averageRating} count={course.reviewCount} />}
+        <Link to={detailPath} className="course-card-title" title={course.title}>
+          {course.title}
+        </Link>
 
-        <div className="course-card-meta">
-          {course.lessonCount != null && <span><Icon name="layers" size={14} />{course.lessonCount} bài học</span>}
-          {course.level && <span><Icon name="trendingUp" size={14} />{COURSE_LEVEL_LABELS[course.level] || course.level}</span>}
+        <div className="course-card-subrow">
+          {course.instructorName ? (
+            <span className="course-card-instructor">
+              <Icon name="user" size={13} />
+              {course.instructorName}
+            </span>
+          ) : (
+            <span className="course-card-instructor">Giảng viên EduHub</span>
+          )}
+          {course.level && (
+            <span className="course-card-level">
+              {COURSE_LEVEL_LABELS[course.level] || course.level}
+            </span>
+          )}
         </div>
 
         <div className="course-card-footer">
           {footer ?? (
             <>
-              <span className={`course-card-price${isFree ? ' is-free' : ''}`}>{formatPrice(course.price)}</span>
-              {!isFree && course.originalPrice > course.price && (
-                <span className="course-card-price-old">{formatPrice(course.originalPrice)}</span>
-              )}
+              <div className="course-card-price-row">
+                <div className="course-card-price-group">
+                  <span className={`course-card-price${isFree ? ' is-free' : ''}`}>
+                    {formatPrice(price)}
+                  </span>
+                  {hasDiscount && (
+                    <span className="course-card-price-old">{formatPrice(originalPrice)}</span>
+                  )}
+                </div>
+
+                {!isFree ? (
+                  <button
+                    type="button"
+                    onClick={handleCartAction}
+                    className={`course-card-cart-btn${inCart ? ' is-in-cart' : ''}`}
+                    title={inCart ? 'Xem trong giỏ hàng' : 'Thêm vào giỏ hàng'}
+                  >
+                    <Icon name={inCart ? 'check' : 'shoppingCart'} size={14} />
+                    <span>{inCart ? 'Trong giỏ' : 'Thêm giỏ'}</span>
+                  </button>
+                ) : (
+                  <Link to={detailPath} className="course-card-cart-btn is-free-btn">
+                    <Icon name="arrowRight" size={14} />
+                    <span>Vào học</span>
+                  </Link>
+                )}
+              </div>
+
+              <div className="course-card-bottom-meta">
+                <div className="course-card-stars" title={`Đánh giá ${ratingValue.toFixed(1)}/5`}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Icon
+                      key={star}
+                      name="star"
+                      size={12}
+                      fill={star <= Math.round(ratingValue) ? '#facc15' : '#e2e8f0'}
+                      style={{ color: star <= Math.round(ratingValue) ? '#facc15' : '#cbd5e1' }}
+                    />
+                  ))}
+                  {reviewCount > 0 && <span className="course-card-review-cnt">({reviewCount})</span>}
+                </div>
+
+                <div className="course-card-stat-right">
+                  <span className="course-card-lesson-badge">
+                    {course.lessonCount != null ? `${course.lessonCount} bài giảng` : 'Trọn bộ'}
+                  </span>
+                </div>
+              </div>
             </>
           )}
         </div>
       </div>
-    </Wrapper>
+    </article>
   );
 }

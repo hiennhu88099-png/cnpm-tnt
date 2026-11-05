@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { enrollmentApi } from '../api/enrollmentApi';
-import { Alert, Badge, Button, Card, EmptyState, PageHeader, ProgressBar, Spinner } from '../components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  MyCoursesGridSkeleton,
+  PageHeader,
+  ProgressBar,
+} from '../components/ui';
 import { COURSE_LEVEL_LABELS } from '../config/site';
 import { formatDate } from '../utils/format';
 
@@ -57,7 +65,7 @@ export default function MyCoursesPage() {
       <Alert variant="error">{error}</Alert>
 
       {loading ? (
-        <Spinner label="Đang tải khóa học của bạn..." />
+        <MyCoursesGridSkeleton count={3} />
       ) : courses.length === 0 ? (
         <EmptyState
           icon="book"
@@ -76,15 +84,20 @@ export default function MyCoursesPage() {
             const statusInfo = STATUS_MAP[item.status] || { label: item.status, variant: 'neutral' };
 
             return (
-              <Card key={item.id} className="course-card">
-                {item.thumbnail && (
-                  <div className="course-card-media">
-                    <img src={item.thumbnail} alt={title} className="course-card-img" loading="lazy" />
+              <article key={item.id} className="course-card">
+                <div className="course-card-thumb">
+                  <div className="course-card-thumb-link">
+                    {item.thumbnail ? (
+                      <img src={item.thumbnail} alt={title} loading="lazy" />
+                    ) : null}
                   </div>
-                )}
+                  <div className="course-card-badges">
+                    <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                  </div>
+                </div>
                 <div className="course-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                    <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                    {item.categoryName && <span className="course-card-level">{item.categoryName}</span>}
                     {item.level && <Badge variant="neutral">{COURSE_LEVEL_LABELS[item.level] || item.level}</Badge>}
                   </div>
 
@@ -128,7 +141,7 @@ export default function MyCoursesPage() {
                     </Button>
                   </div>
                 </div>
-              </Card>
+              </article>
             );
           })}
         </div>

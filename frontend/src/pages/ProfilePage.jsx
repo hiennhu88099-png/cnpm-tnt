@@ -211,7 +211,7 @@ export default function ProfilePage() {
                   </span>
                 ) : (
                   <span className="field-hint">
-                    Hỗ trợ JPG, PNG, WEBP hoặc GIF (tối đa 5MB). Để trống sẽ dùng chữ cái đầu của tên.
+                    Hỗ trợ JPG, PNG, WEBP hoặc GIF (tối đa 5MB). Để trống sẽ dùng ảnh đại diện mặc định.
                   </span>
                 )}
               </div>

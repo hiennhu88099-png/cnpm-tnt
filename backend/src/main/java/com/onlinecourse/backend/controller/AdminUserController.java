@@ -1,5 +1,6 @@
 package com.onlinecourse.backend.controller;
 
+import com.onlinecourse.backend.dto.request.AdminUserUpsertRequest;
 import com.onlinecourse.backend.dto.request.UpdateUserStatusRequest;
 import com.onlinecourse.backend.dto.response.AdminUserResponse;
 import com.onlinecourse.backend.service.AdminUserService;
@@ -7,6 +8,7 @@ import com.onlinecourse.backend.service.AdminUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,21 @@ public class AdminUserController {
     @GetMapping
     public List<AdminUserResponse> getAllUsers() {
         return adminUserService.getAllUsers();
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdminUserResponse createUser(@Valid @RequestBody AdminUserUpsertRequest request) {
+        return adminUserService.createUser(request);
+    }
+
+    @PutMapping("/{id}")
+    public AdminUserResponse updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminUserUpsertRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long adminId = Long.valueOf(jwt.getSubject());
+        return adminUserService.updateUser(id, request, adminId);
     }
 
     @PatchMapping("/{id}/status")

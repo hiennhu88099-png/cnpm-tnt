@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { learningApi } from '../api/learningApi';
+import { LearningPageSkeleton } from '../components/ui';
 
 // Nguồn video dự phòng tốc độ cao (Fastly CDN của Video.js)
 const FALLBACK_VIDEO_URL = 'https://vjs.zencdn.net/v/oceans.mp4';
@@ -225,11 +226,7 @@ export default function LearningPage() {
     }
 
     if (loading) {
-        return (
-            <div className="container section">
-                <p>Đang tải phòng học...</p>
-            </div>
-        );
+        return <LearningPageSkeleton />;
     }
 
     return (

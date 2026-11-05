@@ -2,55 +2,38 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import { enrollmentApi } from '../api/enrollmentApi';
+import { shopApi } from '../api/shopApi';
 import useApiQuery from '../hooks/useApiQuery';
 import { Alert, Button, EmptyState, Icon, PageLoading } from '../components/ui';
 import { levelLabel } from '../config/course';
 import { formatPrice } from '../utils/format';
+import { computeVoucherDiscount, removeMultipleFromCart, useShopStore } from '../utils/shopStore';
 
-const AVAILABLE_VOUCHERS = [
-  {
-    id: 'v1',
-    code: 'NEWSTUDENT',
-    type: 'percent',
-    value: 20,
-    maxDiscount: 100000,
-    minOrderAmount: 0,
-    description: 'Ưu đãi 20% (tối đa 100K) dành cho học viên đăng ký khóa học mới',
-    endDate: '2026-12-31',
-  },
-  {
-    id: 'v2',
-    code: 'EDUHUB50',
-    type: 'fixed',
-    value: 50000,
-    minOrderAmount: 150000,
-    description: 'Giảm trực tiếp 50.000đ cho khóa học từ 150.000đ',
-    endDate: '2026-12-31',
-  },
-  {
-    id: 'v3',
-    code: 'FULLSTACK100',
-    type: 'fixed',
-    value: 100000,
-    minOrderAmount: 400000,
-    description: 'Giảm 100.000đ cho các khóa học chuyên sâu từ 400.000đ',
-    endDate: '2026-12-31',
-  },
-];
-
-function computeDiscount(coupon, subtotal) {
-  if (!coupon) return 0;
-  if (coupon.type === 'percent') {
-    const raw = Math.round((subtotal * coupon.value) / 100);
-    return coupon.maxDiscount ? Math.min(raw, coupon.maxDiscount) : raw;
-  }
-  return Math.min(coupon.value, subtotal);
+function createOrderCode() {
+  return `EDU${Date.now().toString().slice(-6)}`;
 }
 
 export default function CheckoutPage() {
   const [searchParams] = useSearchParams();
-  const courseId = searchParams.get('courseId');
+  const singleCourseId = searchParams.get('courseId');
+  const multiCourseIdsParam = searchParams.get('courseIds');
+  const mode = searchParams.get('mode');
   const navigate = useNavigate();
+
+  const { cart, activeVouchers, isVoucherSaved } = useShopStore();
+
+  const targetIds = singleCourseId
+    ? [Number(singleCourseId)]
+    : multiCourseIdsParam
+      ? multiCourseIdsParam
+          .split(',')
+          .map((x) => Number(x.trim()))
+          .filter(Boolean)
+      : mode === 'cart'
+        ? cart.map((c) => Number(c.id))
+        : [];
+
+  const targetKey = targetIds.join(',');
 
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -58,39 +41,44 @@ export default function CheckoutPage() {
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
+  const [enrolledIds, setEnrolledIds] = useState([]);
 
-  const fetchCourse = useCallback(() => {
-    if (!courseId) return Promise.resolve(null);
-    return courseApi.getCourseById(courseId);
-  }, [courseId]);
+  const fetchSelectedCourses = useCallback(async () => {
+    if (!targetKey) return [];
+    const ids = targetKey.split(',').map(Number).filter(Boolean);
+    const results = await Promise.all(
+      ids.map((id) => courseApi.getCourseById(id).catch(() => null)),
+    );
+    return results.filter(Boolean);
+  }, [targetKey]);
 
-  const { data: course, error, loading } = useApiQuery(fetchCourse);
+  const { data: coursesData, error, loading } = useApiQuery(fetchSelectedCourses);
+  const courses = coursesData ?? [];
 
   useEffect(() => {
-    if (!courseId) return;
+    if (!targetKey) return;
     let active = true;
     enrollmentApi
       .getMyCourses()
       .then((list) => {
         if (!active) return;
         const items = Array.isArray(list) ? list : list?.content ?? [];
-        const found = items.some((item) => Number(item.courseId) === Number(courseId));
-        setAlreadyEnrolled(found);
+        const owned = items.map((item) => Number(item.courseId));
+        setEnrolledIds(owned);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [courseId]);
+  }, [targetKey]);
 
-  if (!courseId) {
+  if (targetIds.length === 0) {
     return (
       <div className="container section">
         <EmptyState
           icon="shoppingBag"
           title="Chưa chọn khóa học để thanh toán"
-          description="Hãy chọn một khóa học bạn yêu thích trong danh mục để tiến hành đăng ký."
+          description="Hãy chọn khóa học trong danh mục hoặc kiểm tra giỏ hàng của bạn để tiến hành đăng ký."
           action={<Button to="/courses">Khám phá khóa học</Button>}
         />
       </div>
@@ -99,7 +87,7 @@ export default function CheckoutPage() {
 
   if (loading) return <PageLoading text="Đang chuẩn bị trang thanh toán..." />;
 
-  if (error || !course) {
+  if (error || courses.length === 0) {
     return (
       <div className="container section">
         <EmptyState
@@ -112,10 +100,16 @@ export default function CheckoutPage() {
     );
   }
 
-  const subtotal = Math.max(0, Number(course.price) || 0);
-  const discountAmount = computeDiscount(appliedCoupon, subtotal);
+  const unownedCourses = courses.filter((c) => !enrolledIds.includes(Number(c.id)));
+  const allAlreadyEnrolled = unownedCourses.length === 0;
+  const activeCoursesForOrder = allAlreadyEnrolled ? courses : unownedCourses;
+
+  const subtotal = activeCoursesForOrder.reduce(
+    (sum, c) => sum + Math.max(0, Number(c.price) || 0),
+    0,
+  );
+  const discountAmount = computeVoucherDiscount(appliedCoupon, subtotal);
   const total = Math.max(0, subtotal - discountAmount);
-  const lessonsCount = course.lessons?.length ?? course.lessonCount ?? 0;
 
   function handleSelectVoucher(voucher) {
     setCouponError('');
@@ -132,13 +126,13 @@ export default function CheckoutPage() {
     const trimmed = couponCode.trim().toUpperCase();
     if (!trimmed) return;
     setCouponError('');
-    const found = AVAILABLE_VOUCHERS.find((v) => v.code === trimmed);
+    const found = activeVouchers.find((v) => v.code === trimmed);
     if (!found) {
-      setCouponError('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+      setCouponError('Mã giảm giá không hợp lệ, đã tạm dừng hoặc đã hết hạn.');
       return;
     }
     if (subtotal < found.minOrderAmount) {
-      setCouponError(`Khóa học cần tối thiểu ${formatPrice(found.minOrderAmount)} để áp dụng mã này.`);
+      setCouponError(`Đơn hàng cần tối thiểu ${formatPrice(found.minOrderAmount)} để áp dụng mã này.`);
       return;
     }
     setAppliedCoupon(found);
@@ -154,19 +148,31 @@ export default function CheckoutPage() {
     e.preventDefault();
     setSubmitError('');
 
-    if (alreadyEnrolled) {
-      navigate(`/learning/${course.id}`);
+    if (allAlreadyEnrolled) {
+      navigate(`/learning/${courses[0].id}`);
       return;
     }
 
-    const orderCode = `EDU${Date.now().toString().slice(-6)}`;
+    const orderIds = activeCoursesForOrder.map((c) => c.id);
+    const orderIdsParam = orderIds.join(',');
+    const primaryId = orderIds[0];
+    const orderCode = createOrderCode();
 
     if (total === 0) {
       setIsProcessing(true);
       try {
-        const created = await enrollmentApi.enrollCourse(course.id);
+        await shopApi.checkoutOrder({
+          orderCode,
+          courseIds: orderIds,
+          subtotalAmount: subtotal,
+          discountAmount,
+          finalAmount: 0,
+          voucherCode: appliedCoupon?.code || '',
+          paymentMethod: 'FREE',
+        });
+        removeMultipleFromCart(orderIds);
         navigate(
-          `/checkout/success?courseId=${course.id}&enrollmentId=${created?.id || ''}&amount=0&method=FREE&code=${orderCode}`
+          `/checkout/success?courseId=${primaryId}&courseIds=${orderIdsParam}&amount=0&method=FREE&code=${orderCode}`,
         );
       } catch (err) {
         setSubmitError(err.response?.data?.message || 'Không thể xử lý đăng ký khóa học.');
@@ -175,16 +181,17 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Chuyển khoản QR SePay / VietQR
     setIsProcessing(true);
     setTimeout(() => {
       navigate(
-        `/payment/sepay?courseId=${course.id}&amount=${total}&discount=${discountAmount}&coupon=${
+        `/payment/sepay?courseId=${primaryId}&courseIds=${orderIdsParam}&subtotal=${subtotal}&amount=${total}&discount=${discountAmount}&coupon=${
           appliedCoupon?.code || ''
-        }&ref=${orderCode}`
+        }&ref=${orderCode}`,
       );
     }, 350);
   }
+
+  const firstCourse = courses[0];
 
   return (
     <div className="checkout-page-wrap">
@@ -205,18 +212,21 @@ export default function CheckoutPage() {
         <nav className="checkout-breadcrumb" aria-label="Breadcrumb">
           <Link to="/courses">Khóa học</Link>
           <span className="checkout-breadcrumb-sep" aria-hidden="true">/</span>
-          <Link to={`/courses/${course.id}`}>{course.title}</Link>
+          {courses.length > 1 ? (
+            <Link to="/cart">Giỏ hàng ({courses.length} khóa học)</Link>
+          ) : (
+            <Link to={`/courses/${firstCourse.id}`}>{firstCourse.title}</Link>
+          )}
           <span className="checkout-breadcrumb-sep" aria-hidden="true">/</span>
           <span className="checkout-breadcrumb-current">Thanh toán</span>
         </nav>
 
         <h1 className="checkout-main-title">Thanh toán</h1>
 
-        {alreadyEnrolled && (
+        {allAlreadyEnrolled && (
           <div style={{ marginBottom: '24px' }}>
             <Alert variant="success" title="Bạn đã sở hữu khóa học này">
-              Tài khoản của bạn đã được kích hoạt khóa học <strong>{course.title}</strong>. Bạn có thể vào học ngay mà
-              không cần thanh toán lại.
+              Tài khoản của bạn đã được kích hoạt khóa học. Bạn có thể vào học ngay mà không cần thanh toán lại.
             </Alert>
           </div>
         )}
@@ -258,7 +268,7 @@ export default function CheckoutPage() {
                       onClick={() => setShowCouponModal(true)}
                       className="checkout-btn-choose-voucher"
                     >
-                      Chọn
+                      Chọn ({activeVouchers.length})
                     </button>
                   </div>
                 )}
@@ -297,7 +307,6 @@ export default function CheckoutPage() {
               </h2>
 
               <div className="checkout-methods-grid">
-                {/* Chuyển khoản QR SePay */}
                 <label className="checkout-method-option is-selected">
                   <div className="checkout-method-left">
                     <input
@@ -326,9 +335,9 @@ export default function CheckoutPage() {
             {/* Submit Button */}
             <button type="submit" disabled={isProcessing} className="checkout-submit-btn">
               <span>
-                {alreadyEnrolled
+                {allAlreadyEnrolled
                   ? 'Vào học ngay'
-                  : `Xác nhận thanh toán — ${formatPrice(total)}`}
+                  : `Xác nhận thanh toán (${activeCoursesForOrder.length} khóa) — ${formatPrice(total)}`}
               </span>
               <Icon name="arrowRight" size={22} />
             </button>
@@ -337,37 +346,49 @@ export default function CheckoutPage() {
           {/* Right Column: Order Summary */}
           <aside className="checkout-right">
             <div className="checkout-summary-card">
-              <h2 className="checkout-summary-title">Thông tin đơn hàng</h2>
+              <h2 className="checkout-summary-title">
+                Thông tin đơn hàng ({activeCoursesForOrder.length})
+              </h2>
 
-              <div className="checkout-course-item">
-                <div className="checkout-course-thumb">
-                  {course.thumbnail ? (
-                    <img src={course.thumbnail} alt={course.title} />
-                  ) : (
-                    <div className="checkout-course-thumb-fallback">
-                      <Icon name="play" size={24} />
+              <div className="checkout-course-list">
+                {activeCoursesForOrder.map((course) => {
+                  const lessonsCount = course.lessons?.length ?? course.lessonCount ?? 0;
+                  const cPrice = Math.max(0, Number(course.price) || 0);
+                  return (
+                    <div key={course.id} className="checkout-course-item">
+                      <div className="checkout-course-thumb">
+                        {course.thumbnail ? (
+                          <img src={course.thumbnail} alt={course.title} />
+                        ) : (
+                          <div className="checkout-course-thumb-fallback">
+                            <Icon name="play" size={24} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="checkout-course-meta">
+                        <div className="checkout-course-name">{course.title}</div>
+                        <div className="checkout-course-sub">
+                          {course.instructorName ? `GV: ${course.instructorName}` : 'EduHub Academy'} ·{' '}
+                          {levelLabel(course.level)}
+                          {lessonsCount > 0 ? ` · ${lessonsCount} bài học` : ''}
+                        </div>
+                        <div className="checkout-course-price-row">
+                          <span className="checkout-course-price">{formatPrice(cPrice)}</span>
+                          {Number(course.originalPrice) > cPrice && (
+                            <span className="checkout-course-price-old">
+                              {formatPrice(course.originalPrice)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="checkout-course-meta">
-                  <div className="checkout-course-name">{course.title}</div>
-                  <div className="checkout-course-sub">
-                    {course.instructorName ? `GV: ${course.instructorName}` : 'EduHub Academy'} ·{' '}
-                    {levelLabel(course.level)}
-                    {lessonsCount > 0 ? ` · ${lessonsCount} bài học` : ''}
-                  </div>
-                  <div className="checkout-course-price-row">
-                    <span className="checkout-course-price">{formatPrice(subtotal)}</span>
-                    {Number(course.originalPrice) > subtotal && (
-                      <span className="checkout-course-price-old">{formatPrice(course.originalPrice)}</span>
-                    )}
-                  </div>
-                </div>
+                  );
+                })}
               </div>
 
               <div className="checkout-summary-Totals">
                 <div className="checkout-summary-row">
-                  <span>Tạm tính</span>
+                  <span>Tạm tính ({activeCoursesForOrder.length} khóa học)</span>
                   <strong>{formatPrice(subtotal)}</strong>
                 </div>
 
@@ -398,7 +419,7 @@ export default function CheckoutPage() {
         </form>
       </div>
 
-      {/* Luxury Minimalist Coupon Modal */}
+      {/* Coupon Modal */}
       {showCouponModal && (
         <div
           className="voucher-modal-backdrop"
@@ -411,7 +432,7 @@ export default function CheckoutPage() {
             <div className="voucher-modal-header">
               <div>
                 <h3 className="voucher-modal-title">Voucher của bạn</h3>
-                <p className="voucher-modal-sub">Chọn ưu đãi tốt nhất cho khóa học</p>
+                <p className="voucher-modal-sub">Chọn ưu đãi tốt nhất cho đơn hàng khóa học</p>
               </div>
               <button
                 type="button"
@@ -424,46 +445,66 @@ export default function CheckoutPage() {
             </div>
 
             <div className="voucher-modal-list">
-              {AVAILABLE_VOUCHERS.map((v) => {
-                const isEligible = subtotal >= v.minOrderAmount;
-                const isSelected = appliedCoupon?.code === v.code;
+              {[...activeVouchers]
+                .sort((a, b) => Number(isVoucherSaved(b.code)) - Number(isVoucherSaved(a.code)))
+                .map((v) => {
+                  const isEligible = subtotal >= v.minOrderAmount;
+                  const isSelected = appliedCoupon?.code === v.code;
+                  const isSaved = isVoucherSaved(v.code);
 
-                return (
-                  <div
-                    key={v.id}
-                    onClick={() => isEligible && handleSelectVoucher(v)}
-                    className={`voucher-item${isSelected ? ' is-selected' : ''}${!isEligible ? ' is-disabled' : ''}`}
-                  >
-                    <div className="voucher-item-inner">
-                      <div className={`voucher-item-badge${isSelected ? ' is-selected' : ''}`}>
-                        <Icon name="ticket" size={22} />
-                        <span>{v.type === 'percent' ? `${v.value}%` : `${Math.round(v.value / 1000)}K`}</span>
-                      </div>
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => isEligible && handleSelectVoucher(v)}
+                      className={`voucher-item${isSelected ? ' is-selected' : ''}${!isEligible ? ' is-disabled' : ''}`}
+                    >
+                      <div className="voucher-item-inner">
+                        <div className={`voucher-item-badge${isSelected ? ' is-selected' : ''}`}>
+                          <Icon name="ticket" size={22} />
+                          <span>{v.type === 'percent' ? `${v.value}%` : `${Math.round(v.value / 1000)}K`}</span>
+                        </div>
 
-                      <div className="voucher-item-body">
-                        <div className="voucher-item-top">
-                          <span className="voucher-item-code">{v.code}</span>
-                          {isSelected && (
-                            <span className="voucher-item-check">
-                              <Icon name="check" size={14} />
-                            </span>
+                        <div className="voucher-item-body">
+                          <div className="voucher-item-top">
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              <span className="voucher-item-code">{v.code}</span>
+                              {isSaved && (
+                                <span
+                                  style={{
+                                    padding: '2px 8px',
+                                    borderRadius: 999,
+                                    background: '#ecfdf5',
+                                    border: '1px solid #a7f3d0',
+                                    color: '#047857',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  Đã lưu
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <span className="voucher-item-check">
+                                <Icon name="check" size={14} />
+                              </span>
+                            )}
+                          </div>
+                          <p className="voucher-item-desc">{v.description}</p>
+                          <div className="voucher-item-foot">
+                            <span>Đơn tối thiểu: {formatPrice(v.minOrderAmount)}</span>
+                            <span>HSD: {new Date(v.endDate).toLocaleDateString('vi-VN')}</span>
+                          </div>
+                          {!isEligible && (
+                            <div className="voucher-item-ineligible">
+                              Cần thêm {formatPrice(v.minOrderAmount - subtotal)} để sử dụng mã này
+                            </div>
                           )}
                         </div>
-                        <p className="voucher-item-desc">{v.description}</p>
-                        <div className="voucher-item-foot">
-                          <span>Đơn tối thiểu: {formatPrice(v.minOrderAmount)}</span>
-                          <span>HSD: {new Date(v.endDate).toLocaleDateString('vi-VN')}</span>
-                        </div>
-                        {!isEligible && (
-                          <div className="voucher-item-ineligible">
-                            Cần thêm {formatPrice(v.minOrderAmount - subtotal)} để sử dụng mã này
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
 
             <div className="voucher-modal-footer">
@@ -477,4 +518,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

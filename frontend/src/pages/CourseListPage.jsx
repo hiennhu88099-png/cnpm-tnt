@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import useApiQuery from '../hooks/useApiQuery';
-import { Alert, Button, CourseCard, EmptyState, Icon, PageLoading } from '../components/ui';
+import { Alert, Button, CourseCard, CourseGridSkeleton, EmptyState, Icon } from '../components/ui';
 import Pagination from '../components/course/Pagination';
 import { COURSE_SORTS } from '../config/course';
 import { formatNumber } from '../utils/format';
@@ -63,10 +63,8 @@ export default function CourseListPage() {
     setSearchParams({});
   };
 
-  // Lần tải đầu tiên: chưa có dữ liệu nào để hiển thị
-  if (loading && !result && !error) return <PageLoading text="Đang tải khóa học..." />;
-
   const courses = result?.content ?? [];
+  const isInitialLoading = loading && !result && !error;
 
   return (
     <div className="container section">
@@ -131,7 +129,9 @@ export default function CourseListPage() {
         </div>
       </form>
 
-      {error ? (
+      {isInitialLoading ? (
+        <CourseGridSkeleton count={PAGE_SIZE} />
+      ) : error ? (
         <Alert variant="error">
           {error.message}{' '}
           <button type="button" className="text-link" onClick={reload}>

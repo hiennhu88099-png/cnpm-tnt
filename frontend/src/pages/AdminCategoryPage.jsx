@@ -3,7 +3,7 @@ import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
 import FormField from '../components/FormField';
-import { Alert, Badge, Button, Card, EmptyState, PageHeader, PageLoading } from '../components/ui';
+import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
 import { CATEGORY_STATUSES, statusOption } from '../config/course';
 import { formatDate } from '../utils/format';
 
@@ -196,7 +196,7 @@ export default function AdminCategoryPage() {
                     <th scope="col">Tên danh mục</th>
                     <th scope="col">Trạng thái</th>
                     <th scope="col">Ngày tạo</th>
-                    <th scope="col">Thao tác</th>
+                    <th scope="col" className="nx-th-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -216,17 +216,35 @@ export default function AdminCategoryPage() {
                         <td>{formatDate(category.createdAt)}</td>
                         <td>
                           <div className="row-actions">
-                            <Button variant="ghost" size="sm" onClick={() => startEdit(category)} disabled={busy}>
-                              Sửa
-                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(category)}
+                              disabled={busy}
+                              className="nx-action-btn is-edit"
+                            >
+                              <Icon name="pen" size={14} />
+                              <span>Sửa</span>
+                            </button>
                             {category.status === 'ACTIVE' ? (
-                              <Button variant="ghost" size="sm" onClick={() => handleDeactivate(category)} loading={busy}>
-                                Ngừng dùng
-                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeactivate(category)}
+                                disabled={busy}
+                                className="nx-action-btn is-warning"
+                              >
+                                <Icon name="eyeOff" size={14} />
+                                <span>{busy ? '...' : 'Ngừng dùng'}</span>
+                              </button>
                             ) : (
-                              <Button variant="ghost" size="sm" onClick={() => handleReactivate(category)} loading={busy}>
-                                Kích hoạt lại
-                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => handleReactivate(category)}
+                                disabled={busy}
+                                className="nx-action-btn is-success"
+                              >
+                                <Icon name="checkCircle" size={14} />
+                                <span>{busy ? '...' : 'Kích hoạt'}</span>
+                              </button>
                             )}
                           </div>
                         </td>

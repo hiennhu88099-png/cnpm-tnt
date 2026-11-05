@@ -13,17 +13,32 @@ const METHOD_LABELS = {
 export default function CheckoutSuccessPage() {
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('courseId');
+  const courseIdsParam = searchParams.get('courseIds');
   const amountParam = searchParams.get('amount');
   const method = searchParams.get('method') || 'SEPAY';
   const orderCode = searchParams.get('code') || 'EDU8899';
 
-  const fetchCourse = useCallback(() => {
-    if (!courseId) return Promise.resolve(null);
-    return courseApi.getCourseById(courseId);
-  }, [courseId]);
+  const targetIds = courseIdsParam
+    ? courseIdsParam
+        .split(',')
+        .map((x) => Number(x.trim()))
+        .filter(Boolean)
+    : courseId
+      ? [Number(courseId)]
+      : [];
+  const targetKey = targetIds.join(',');
 
-  const { data: course } = useApiQuery(fetchCourse);
-  const finalAmount = Number(amountParam ?? course?.price ?? 0);
+  const fetchCourses = useCallback(async () => {
+    if (!targetKey) return [];
+    const ids = targetKey.split(',').map(Number).filter(Boolean);
+    const list = await Promise.all(ids.map((id) => courseApi.getCourseById(id).catch(() => null)));
+    return list.filter(Boolean);
+  }, [targetKey]);
+
+  const { data: coursesData } = useApiQuery(fetchCourses);
+  const courses = coursesData ?? [];
+  const primaryCourse = courses[0];
+  const finalAmount = Number(amountParam ?? primaryCourse?.price ?? 0);
 
   const steps = [
     {
@@ -54,7 +69,9 @@ export default function CheckoutSuccessPage() {
             <Icon name="checkCircle" size={56} />
           </div>
           <h1 className="order-success-title">Tuyệt vời! Đăng ký thành công</h1>
-          <p className="order-success-subtitle">Đơn #{orderCode} — Khóa học đã sẵn sàng</p>
+          <p className="order-success-subtitle">
+            Đơn #{orderCode} — {courses.length > 1 ? `${courses.length} khóa học đã sẵn sàng` : 'Khóa học đã sẵn sàng'}
+          </p>
         </div>
 
         <div className="order-success-card">
@@ -65,8 +82,8 @@ export default function CheckoutSuccessPage() {
                 <h3 className="order-success-section-label">Tóm tắt đơn hàng</h3>
 
                 <div className="order-success-rows">
-                  {course && (
-                    <div className="order-success-course-box">
+                  {courses.map((course) => (
+                    <div key={course.id} className="order-success-course-box">
                       {course.thumbnail && (
                         <img src={course.thumbnail} alt={course.title} className="order-success-course-thumb" />
                       )}
@@ -77,7 +94,7 @@ export default function CheckoutSuccessPage() {
                         )}
                       </div>
                     </div>
-                  )}
+                  ))}
 
                   <div className="order-success-row">
                     <span>Mã giao dịch</span>
@@ -141,8 +158,8 @@ export default function CheckoutSuccessPage() {
               <span>Khóa học của tôi</span>
             </Link>
 
-            {courseId && (
-              <Link to={`/learning/${courseId}`} className="order-success-btn is-primary">
+            {primaryCourse && (
+              <Link to={`/learning/${primaryCourse.id}`} className="order-success-btn is-primary">
                 <span>Vào học ngay</span>
                 <Icon name="arrowRight" size={18} />
               </Link>
@@ -153,4 +170,3 @@ export default function CheckoutSuccessPage() {
     </div>
   );
 }
-

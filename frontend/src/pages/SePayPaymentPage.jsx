@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
-import { enrollmentApi } from '../api/enrollmentApi';
+import { shopApi } from '../api/shopApi';
 import useApiQuery from '../hooks/useApiQuery';
 import { Alert, Button, EmptyState, Icon } from '../components/ui';
 import { formatPrice } from '../utils/format';
+import { removeMultipleFromCart } from '../utils/shopStore';
 
-const BANK_INFO = {
+const FALLBACK_BANK_INFO = {
   bankCode: 'MB',
   bankName: 'MB Bank (Ngân hàng Quân Đội)',
   accountNumber: '0000012345678',
   accountHolder: 'EDUHUB ACADEMY',
+  transferPrefix: 'EDUHUB',
 };
 
 function CopyRow({ label, value, mono = false }) {
@@ -51,21 +53,106 @@ export default function SePayPaymentPage() {
   const navigate = useNavigate();
 
   const courseId = searchParams.get('courseId');
+  const courseIdsParam = searchParams.get('courseIds');
+  const subtotalParam = searchParams.get('subtotal');
+  const discountParam = searchParams.get('discount');
+  const couponParam = searchParams.get('coupon');
   const amountParam = searchParams.get('amount');
   const refParam = searchParams.get('ref');
+
+  const targetIds = courseIdsParam
+    ? courseIdsParam
+        .split(',')
+        .map((x) => Number(x.trim()))
+        .filter(Boolean)
+    : courseId
+      ? [Number(courseId)]
+      : [];
+  const targetKey = targetIds.join(',');
+  const primaryId = targetIds[0] || courseId;
 
   const [secondsLeft, setSecondsLeft] = useState(15 * 60);
   const [status, setStatus] = useState('WAITING'); // WAITING | COMPLETED | EXPIRED
   const [confirming, setConfirming] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [bankInfo, setBankInfo] = useState(FALLBACK_BANK_INFO);
 
   const fetchCourse = useCallback(() => {
-    if (!courseId) return Promise.resolve(null);
-    return courseApi.getCourseById(courseId);
-  }, [courseId]);
+    if (!primaryId) return Promise.resolve(null);
+    return courseApi.getCourseById(primaryId);
+  }, [primaryId]);
 
   const { data: course } = useApiQuery(fetchCourse);
+
+  const amount = Math.max(0, Number(amountParam ?? course?.price ?? 0));
+  const refCode = (refParam || `EDU${primaryId}`).toUpperCase();
+  const prefix = bankInfo.transferPrefix || 'EDUHUB';
+  const transferContent = `${prefix} KH${primaryId} ${refCode}`;
+  const qrUrl = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-compact2.png?amount=${Math.round(
+    amount,
+  )}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(bankInfo.accountHolder)}`;
+
+  // 1. Tải cấu hình tài khoản ngân hàng từ Backend (application.properties / .env)
+  useEffect(() => {
+    let active = true;
+    shopApi
+      .getPaymentConfig()
+      .then((cfg) => {
+        if (!active || !cfg) return;
+        setBankInfo({
+          bankCode: cfg.bankCode || FALLBACK_BANK_INFO.bankCode,
+          bankName: cfg.bankName || FALLBACK_BANK_INFO.bankName,
+          accountNumber: cfg.accountNumber || FALLBACK_BANK_INFO.accountNumber,
+          accountHolder: cfg.accountHolder || FALLBACK_BANK_INFO.accountHolder,
+          transferPrefix: cfg.transferPrefix || FALLBACK_BANK_INFO.transferPrefix,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // 2. Khởi tạo đơn hàng ở trạng thái PENDING để sẵn sàng đối soát tự động qua Webhook
+  useEffect(() => {
+    if (!targetKey || !refCode || amount <= 0) return;
+    const ids = targetKey.split(',').map(Number).filter(Boolean);
+    shopApi
+      .createPendingOrder({
+        orderCode: refCode,
+        courseIds: ids,
+        subtotalAmount: Number(subtotalParam ?? amount),
+        discountAmount: Number(discountParam ?? 0),
+        finalAmount: amount,
+        voucherCode: couponParam || '',
+        paymentMethod: 'SEPAY',
+      })
+      .catch(() => {});
+  }, [targetKey, refCode, amount, subtotalParam, discountParam, couponParam]);
+
+  // 3. Tự động kiểm tra trạng thái đơn hàng mỗi 3 giây (tự hoàn tất ngay khi Webhook báo tiền về)
+  useEffect(() => {
+    if (status !== 'WAITING' || !refCode || !targetKey) return undefined;
+    const poll = setInterval(() => {
+      shopApi
+        .getOrderStatus(refCode)
+        .then((order) => {
+          if (order?.status === 'COMPLETED') {
+            const ids = targetKey.split(',').map(Number).filter(Boolean);
+            removeMultipleFromCart(ids);
+            setStatus('COMPLETED');
+            setTimeout(() => {
+              navigate(
+                `/checkout/success?courseId=${primaryId}&courseIds=${targetKey}&orderId=${order.id || ''}&amount=${amount}&method=SEPAY&code=${refCode}`,
+              );
+            }, 900);
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [status, refCode, targetKey, primaryId, amount, navigate]);
 
   useEffect(() => {
     if (status !== 'WAITING') return undefined;
@@ -81,7 +168,7 @@ export default function SePayPaymentPage() {
     return () => clearInterval(timer);
   }, [status]);
 
-  if (!courseId) {
+  if (!primaryId) {
     return (
       <div className="container section">
         <EmptyState
@@ -94,13 +181,6 @@ export default function SePayPaymentPage() {
     );
   }
 
-  const amount = Math.max(0, Number(amountParam ?? course?.price ?? 0));
-  const refCode = refParam || `EDU${courseId}`;
-  const transferContent = `EDUHUB KH${courseId} ${refCode}`;
-  const qrUrl = `https://img.vietqr.io/image/${BANK_INFO.bankCode}-${BANK_INFO.accountNumber}-compact2.png?amount=${Math.round(
-    amount
-  )}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(BANK_INFO.accountHolder)}`;
-
   const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const seconds = String(secondsLeft % 60).padStart(2, '0');
 
@@ -108,20 +188,21 @@ export default function SePayPaymentPage() {
     setConfirming(true);
     setErrorMsg('');
     try {
-      let created = null;
-      try {
-        created = await enrollmentApi.enrollCourse(courseId);
-      } catch (err) {
-        // Nếu học viên đã sở hữu khóa học rồi thì vẫn cho qua trang success
-        const msg = err.response?.data?.message || '';
-        if (!msg.toLowerCase().includes('đã đăng ký') && err.response?.status !== 409 && err.response?.status !== 400) {
-          throw err;
-        }
-      }
+      const savedOrder = await shopApi.checkoutOrder({
+        orderCode: refCode,
+        courseIds: targetIds,
+        subtotalAmount: Number(subtotalParam ?? amount),
+        discountAmount: Number(discountParam ?? 0),
+        finalAmount: amount,
+        voucherCode: couponParam || '',
+        paymentMethod: 'SEPAY',
+      });
+
+      removeMultipleFromCart(targetIds);
       setStatus('COMPLETED');
       setTimeout(() => {
         navigate(
-          `/checkout/success?courseId=${courseId}&enrollmentId=${created?.id || ''}&amount=${amount}&method=SEPAY&code=${refCode}`
+          `/checkout/success?courseId=${primaryId}&courseIds=${targetKey}&orderId=${savedOrder?.id || ''}&amount=${amount}&method=SEPAY&code=${refCode}`,
         );
       }, 900);
     } catch (err) {
@@ -135,8 +216,12 @@ export default function SePayPaymentPage() {
       <div className="container sepay-container">
         {course && (
           <div className="sepay-course-banner">
-            <span className="sepay-course-badge">VietQR SePay</span>
-            <span className="sepay-course-name">{course.title}</span>
+            <span className="sepay-course-badge">VietQR 24/7</span>
+            <span className="sepay-course-name">
+              {targetIds.length > 1
+                ? `${course.title} (+${targetIds.length - 1} khóa học khác)`
+                : course.title}
+            </span>
           </div>
         )}
 
@@ -199,9 +284,9 @@ export default function SePayPaymentPage() {
               </div>
 
               <div className="sepay-copy-list">
-                <CopyRow label="Ngân hàng" value={BANK_INFO.bankName} />
-                <CopyRow label="Số tài khoản" value={BANK_INFO.accountNumber} mono />
-                <CopyRow label="Chủ tài khoản" value={BANK_INFO.accountHolder} />
+                <CopyRow label="Ngân hàng" value={bankInfo.bankName} />
+                <CopyRow label="Số tài khoản" value={bankInfo.accountNumber} mono />
+                <CopyRow label="Chủ tài khoản" value={bankInfo.accountHolder} />
                 <CopyRow label="Nội dung chuyển khoản" value={transferContent} mono />
               </div>
             </div>
@@ -257,7 +342,7 @@ export default function SePayPaymentPage() {
             </div>
             <h3 className="sepay-modal-title">Hủy thanh toán?</h3>
             <p className="sepay-modal-desc">
-              Phiên thanh toán QR cho khóa học này sẽ bị hủy. Bạn có thể đăng ký lại bất cứ lúc nào.
+              Phiên thanh toán QR cho đơn hàng này sẽ bị hủy. Bạn có thể đăng ký lại bất cứ lúc nào.
             </p>
             <div className="sepay-modal-actions">
               <button type="button" onClick={() => setShowCancelModal(false)} className="sepay-modal-keep">
@@ -265,7 +350,13 @@ export default function SePayPaymentPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate(`/checkout?courseId=${courseId}`)}
+                onClick={() =>
+                  navigate(
+                    targetIds.length > 1
+                      ? `/checkout?mode=cart&courseIds=${targetKey}`
+                      : `/checkout?courseId=${primaryId}`,
+                  )
+                }
                 className="sepay-modal-confirm-cancel"
               >
                 Hủy ngay
@@ -277,4 +368,3 @@ export default function SePayPaymentPage() {
     </div>
   );
 }
-

@@ -6,9 +6,19 @@ import { reviewApi } from '../api/reviewApi';
 import useApiQuery from '../hooks/useApiQuery';
 import { useAuth } from '../auth/useAuth';
 import CourseReviews from '../components/CourseReviews';
-import { Alert, Badge, Button, EmptyState, Icon, PageLoading, ProgressBar, StarRating } from '../components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  CourseDetailSkeleton,
+  EmptyState,
+  Icon,
+  ProgressBar,
+  StarRating,
+} from '../components/ui';
 import { formatDuration, levelLabel } from '../config/course';
 import { formatPrice } from '../utils/format';
+import { useShopStore } from '../utils/shopStore';
 
 const TABS = [
   { id: 'overview', label: 'Giới thiệu' },
@@ -20,6 +30,7 @@ export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { isInWishlist, toggleWishlist, isInCart, addToCart } = useShopStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [enrollment, setEnrollment] = useState(null);
   const [reviewSummary, setReviewSummary] = useState(null);
@@ -75,7 +86,7 @@ export default function CourseDetailPage() {
     }
   }
 
-  if (loading) return <PageLoading text="Đang tải khóa học..." />;
+  if (loading) return <CourseDetailSkeleton />;
 
   if (error?.status === 404 || error?.status === 400) {
     return (
@@ -182,6 +193,37 @@ export default function CourseDetailPage() {
                 <Button size="lg" block to={`/checkout?courseId=${course.id}`}>
                   Mua khóa học ngay
                 </Button>
+              )}
+
+              {!enrollment && (
+                <div className="enroll-card-subactions">
+                  {!isFree && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isInCart(course.id)) {
+                          navigate('/cart');
+                        } else {
+                          addToCart(course);
+                        }
+                      }}
+                      className={`enroll-sub-btn${isInCart(course.id) ? ' is-in-cart' : ''}`}
+                    >
+                      <Icon name={isInCart(course.id) ? 'check' : 'shoppingCart'} size={16} />
+                      <span>{isInCart(course.id) ? 'Đã trong giỏ (Xem giỏ)' : 'Thêm vào giỏ hàng'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => toggleWishlist(course)}
+                    className={`enroll-sub-btn is-wish${isInWishlist(course.id) ? ' is-active' : ''}`}
+                    title="Lưu khóa học yêu thích"
+                  >
+                    <Icon name="heart" size={16} fill={isInWishlist(course.id) ? 'currentColor' : 'none'} />
+                    <span>{isInWishlist(course.id) ? 'Đã yêu thích' : 'Yêu thích'}</span>
+                  </button>
+                </div>
               )}
 
               <ul className="enroll-card-facts">

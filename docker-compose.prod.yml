@@ -35,6 +35,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-online_course_jwt_secret_key_2026_at_least_32_chars_long}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      SEPAY_BANK_CODE: ${SEPAY_BANK_CODE:-MB}
+      SEPAY_BANK_NAME: ${SEPAY_BANK_NAME:-MB Bank (Ngân hàng Quân Đội)}
+      SEPAY_ACCOUNT_NUMBER: ${SEPAY_ACCOUNT_NUMBER:-0000012345678}
+      SEPAY_ACCOUNT_HOLDER: ${SEPAY_ACCOUNT_HOLDER:-EDUHUB ACADEMY}
+      SEPAY_PREFIX: ${SEPAY_PREFIX:-EDUHUB}
+      SEPAY_WEBHOOK_SECRET: ${SEPAY_WEBHOOK_SECRET:-}
     networks:
       - app-net
     restart: unless-stopped
