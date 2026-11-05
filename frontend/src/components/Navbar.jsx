@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { ACCOUNT_NAV, MAIN_NAV, ROLE_LABELS } from '../config/site';
+import { useShopStore } from '../utils/shopStore';
 import { Avatar, Badge, Icon } from './ui';
 import Brand from './Brand';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { wishlist, cart } = useShopStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -144,6 +146,32 @@ export default function Navbar() {
                 <span className="header-course-widget-sub">Khám phá</span>
                 <span className="header-course-widget-title">Khóa học</span>
               </span>
+            </Link>
+
+            <Link
+              to="/wishlist"
+              className="header-icon-action"
+              title="Khóa học yêu thích"
+              aria-label="Khóa học yêu thích"
+              onClick={closeMenus}
+            >
+              <Icon name="heart" size={20} />
+              {wishlist.length > 0 && (
+                <span className="header-icon-badge is-pink">{wishlist.length}</span>
+              )}
+            </Link>
+
+            <Link
+              to="/cart"
+              className="header-icon-action"
+              title="Giỏ hàng khóa học"
+              aria-label="Giỏ hàng khóa học"
+              onClick={closeMenus}
+            >
+              <Icon name="shoppingCart" size={20} />
+              {cart.length > 0 && (
+                <span className="header-icon-badge">{cart.length}</span>
+              )}
             </Link>
 
             {isAuthenticated ? (

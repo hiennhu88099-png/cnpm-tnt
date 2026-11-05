@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 450" width="1050" height="450">
+  <rect width="1050" height="450" fill="#ffffff" />
+  <circle cx="920" cy="80" r="190" fill="#f8fafc" />
+
+  <g transform="translate(62, 64)">
+    <rect x="0" y="0" width="236" height="36" rx="18" fill="#eff6ff" stroke="#bfdbfe" />
+    <text x="22" y="23" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="800" letter-spacing="1">ƯU ĐÃI HỌC VIÊN MỚI</text>
+
+    <text x="0" y="96" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="900">Combo Lập Trình &amp; AI</text>
+    <text x="0" y="152" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="900">Tiết Kiệm Đến 150.000đ</text>
+
+    <text x="0" y="202" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500">Áp dụng khi đăng ký từ 2 khóa học bất kỳ trong giỏ hàng.</text>
+    <text x="0" y="232" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500">Thanh toán chuyển khoản VietQR tự động kích hoạt khóa học ngay!</text>
+
+    <rect x="0" y="268" width="220" height="52" rx="14" fill="#2563eb" />
+    <text x="32" y="301" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="17" font-weight="800">XEM ƯU ĐÃI NGAY →</text>
+  </g>
+
+  <g transform="translate(690, 88)">
+    <rect x="0" y="0" width="296" height="274" rx="24" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" />
+    <text x="42" y="64" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="800">MÃ GIẢM GIÁ COMBO</text>
+    <text x="42" y="128" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="52" font-weight="900">-150K</text>
+    <rect x="42" y="156" width="212" height="46" rx="12" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" stroke-dasharray="5 4" />
+    <text x="68" y="186" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="900">COMBO150K</text>
+    <text x="42" y="238" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600">Áp dụng tại trang Thanh toán</text>
+  </g>
+</svg>

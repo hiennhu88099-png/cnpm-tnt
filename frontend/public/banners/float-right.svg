@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 360" width="240" height="360">
+  <rect x="1" y="1" width="238" height="358" rx="20" fill="#ffffff" stroke="#e2e8f0" stroke-width="2" />
+  <rect x="24" y="24" width="192" height="32" rx="16" fill="#eff6ff" />
+  <text x="52" y="45" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="900">MÃ GIẢM GIÁ</text>
+
+  <text x="120" y="114" text-anchor="middle" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="900">NHẬP MÃ</text>
+  <rect x="24" y="132" width="192" height="48" rx="12" fill="#f8fafc" stroke="#93c5fd" stroke-width="1.5" stroke-dasharray="5 4" />
+  <text x="120" y="164" text-anchor="middle" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="900">EDUHUB50</text>
+  <text x="120" y="216" text-anchor="middle" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="800">Giảm ngay 50.000đ</text>
+  <text x="120" y="240" text-anchor="middle" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600">Cho đơn từ 150.000đ</text>
+
+  <rect x="30" y="276" width="180" height="48" rx="14" fill="#0f172a" />
+  <text x="120" y="306" text-anchor="middle" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="900">DÙNG NGAY →</text>
+</svg>

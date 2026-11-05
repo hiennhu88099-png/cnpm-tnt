@@ -5,78 +5,89 @@ import { enrollmentApi } from '../api/enrollmentApi';
 import { reviewApi } from '../api/reviewApi';
 import useApiQuery from '../hooks/useApiQuery';
 import { useAuth } from '../auth/useAuth';
-import { Alert, Button, EmptyState, Icon, PageLoading, StarRating } from '../components/ui';
 import CourseReviews from '../components/CourseReviews';
+import {
+  Alert,
+  Badge,
+  Button,
+  CourseDetailSkeleton,
+  EmptyState,
+  Icon,
+  ProgressBar,
+  StarRating,
+} from '../components/ui';
 import { formatDuration, levelLabel } from '../config/course';
 import { formatPrice } from '../utils/format';
+import { useShopStore } from '../utils/shopStore';
 
 const TABS = [
   { id: 'overview', label: 'Giới thiệu' },
   { id: 'curriculum', label: 'Chương trình học' },
-  { id: 'reviews', label: 'Đánh giá' },
+  { id: 'reviews', label: 'Đánh giá học viên' },
 ];
 
 export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { isInWishlist, toggleWishlist, isInCart, addToCart } = useShopStore();
   const [activeTab, setActiveTab] = useState('overview');
-  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [enrollment, setEnrollment] = useState(null);
+  const [reviewSummary, setReviewSummary] = useState(null);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState('');
-  const [reviewSummary, setReviewSummary] = useState(null);
 
   const fetchCourse = useCallback(() => courseApi.getCourseById(id), [id]);
   const { data: course, error, loading } = useApiQuery(fetchCourse);
 
-  // Kiểm tra trạng thái đã đăng ký và lấy điểm đánh giá tổng hợp
   useEffect(() => {
     let active = true;
+    reviewApi
+      .getSummary(id)
+      .then((res) => {
+        if (active) setReviewSummary(res);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
-    if (isAuthenticated && id) {
-      enrollmentApi.getMyCourses()
-        .then((data) => {
-          if (!active) return;
-          const list = Array.isArray(data) ? data : data?.content ?? [];
-          const enrolled = list.some((item) => {
-            const courseId = item.course?.id ?? item.courseId ?? item.id;
-            return Number(courseId) === Number(id);
-          });
-          setIsEnrolled(enrolled);
-        })
-        .catch(() => {});
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
     }
-
-    if (id) {
-      reviewApi.getSummary(id)
-        .then((sum) => {
-          if (active) setReviewSummary(sum);
-        })
-        .catch(() => {});
-    }
-
+    let active = true;
+    enrollmentApi
+      .getMyCourses()
+      .then((list) => {
+        if (!active) return;
+        const items = Array.isArray(list) ? list : list?.content ?? [];
+        const found = items.find((item) => Number(item.courseId) === Number(id));
+        setEnrollment(found || null);
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
   }, [id, isAuthenticated]);
 
-  async function handleEnroll() {
-    setEnrollError('');
+  async function handleConfirmEnroll() {
     setEnrolling(true);
+    setEnrollError('');
     try {
-      await enrollmentApi.enrollCourse(id);
-      setIsEnrolled(true);
+      const created = await enrollmentApi.enrollCourse(id);
+      setEnrollment(created);
       navigate(`/learning/${id}`);
     } catch (err) {
-      setEnrollError(err.response?.data?.message || 'Không thể đăng ký khóa học. Vui lòng thử lại.');
+      setEnrollError(err.response?.data?.message || 'Không thể đăng ký khóa học này.');
     } finally {
       setEnrolling(false);
     }
   }
 
-  if (loading) return <PageLoading text="Đang tải khóa học..." />;
+  if (loading) return <CourseDetailSkeleton />;
 
-  // Khóa học không tồn tại, chưa xuất bản hoặc đã ẩn: backend trả 404 (id sai định dạng: 400)
   if (error?.status === 404 || error?.status === 400) {
     return (
       <div className="container section">
@@ -101,9 +112,9 @@ export default function CourseDetailPage() {
   const lessons = course.lessons ?? [];
   const totalMinutes = course.duration || lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0);
   const isFree = Number(course.price) === 0;
-
-  const currentRating = reviewSummary?.averageRating ?? course.averageRating;
-  const currentReviewCount = reviewSummary?.reviewCount ?? course.reviewCount;
+  const avgRating = reviewSummary?.averageRating ?? course.averageRating;
+  const revCount = reviewSummary?.reviewCount ?? course.reviewCount ?? 0;
+  const progressPct = Math.round(Number(enrollment?.progress ?? 0));
 
   return (
     <>
@@ -120,14 +131,26 @@ export default function CourseDetailPage() {
 
             <div className="course-hero-meta">
               {course.instructorName && (
-                <span><Icon name="user" size={16} />Giảng viên: {course.instructorName}</span>
+                <span>
+                  <Icon name="user" size={16} />
+                  Giảng viên: {course.instructorName}
+                </span>
               )}
-              <span><Icon name="trendingUp" size={16} />{levelLabel(course.level)}</span>
-              <span><Icon name="layers" size={16} />{lessons.length} bài học</span>
-              {totalMinutes > 0 && <span><Icon name="clock" size={16} />{formatDuration(totalMinutes)}</span>}
-              {currentRating != null && (
-                <StarRating value={currentRating} count={currentReviewCount} />
+              <span>
+                <Icon name="trendingUp" size={16} />
+                {levelLabel(course.level)}
+              </span>
+              <span>
+                <Icon name="layers" size={16} />
+                {lessons.length} bài học
+              </span>
+              {totalMinutes > 0 && (
+                <span>
+                  <Icon name="clock" size={16} />
+                  {formatDuration(totalMinutes)}
+                </span>
               )}
+              {revCount > 0 && <StarRating value={Number(avgRating || 0)} count={revCount} />}
             </div>
           </div>
 
@@ -143,29 +166,81 @@ export default function CourseDetailPage() {
                 )}
               </div>
 
-              {isAuthenticated ? (
-                isEnrolled ? (
-                  <Button size="lg" block to={`/learning/${course.id}`}>Vào học ngay</Button>
-                ) : (
-                  <>
-                    <Button size="lg" block loading={enrolling} onClick={handleEnroll}>
-                      {isFree ? 'Đăng ký học miễn phí' : 'Đăng ký học'}
-                    </Button>
-                    {enrollError && (
-                      <p className="enroll-card-note" style={{ color: 'var(--color-danger, #ef4444)' }}>
-                        {enrollError}
-                      </p>
-                    )}
-                  </>
-                )
+              <Alert variant="error">{enrollError}</Alert>
+
+              {!isAuthenticated ? (
+                <Button size="lg" block to="/login">
+                  Đăng nhập để đăng ký
+                </Button>
+              ) : enrollment ? (
+                <div className="stack" style={{ gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Badge variant={enrollment.status === 'COMPLETED' ? 'success' : 'primary'}>
+                      {enrollment.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Đã sở hữu khóa học'}
+                    </Badge>
+                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700 }}>{progressPct}%</span>
+                  </div>
+                  <ProgressBar value={progressPct} />
+                  <Button size="lg" block to={`/learning/${course.id}`}>
+                    {progressPct > 0 ? 'Tiếp tục vào học' : 'Vào học ngay'}
+                  </Button>
+                </div>
+              ) : isFree ? (
+                <Button size="lg" block loading={enrolling} onClick={handleConfirmEnroll}>
+                  Đăng ký học miễn phí
+                </Button>
               ) : (
-                <Button size="lg" block to="/login">Đăng nhập để đăng ký</Button>
+                <Button size="lg" block to={`/checkout?courseId=${course.id}`}>
+                  Mua khóa học ngay
+                </Button>
+              )}
+
+              {!enrollment && (
+                <div className="enroll-card-subactions">
+                  {!isFree && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isInCart(course.id)) {
+                          navigate('/cart');
+                        } else {
+                          addToCart(course);
+                        }
+                      }}
+                      className={`enroll-sub-btn${isInCart(course.id) ? ' is-in-cart' : ''}`}
+                    >
+                      <Icon name={isInCart(course.id) ? 'check' : 'shoppingCart'} size={16} />
+                      <span>{isInCart(course.id) ? 'Đã trong giỏ (Xem giỏ)' : 'Thêm vào giỏ hàng'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => toggleWishlist(course)}
+                    className={`enroll-sub-btn is-wish${isInWishlist(course.id) ? ' is-active' : ''}`}
+                    title="Lưu khóa học yêu thích"
+                  >
+                    <Icon name="heart" size={16} fill={isInWishlist(course.id) ? 'currentColor' : 'none'} />
+                    <span>{isInWishlist(course.id) ? 'Đã yêu thích' : 'Yêu thích'}</span>
+                  </button>
+                </div>
               )}
 
               <ul className="enroll-card-facts">
-                <li><Icon name="layers" size={16} />{lessons.length} bài học</li>
-                {totalMinutes > 0 && <li><Icon name="clock" size={16} />Tổng thời lượng {formatDuration(totalMinutes)}</li>}
-                <li><Icon name="globe" size={16} />Học trực tuyến, mọi lúc</li>
+                <li>
+                  <Icon name="layers" size={16} />
+                  {lessons.length} bài học
+                </li>
+                {totalMinutes > 0 && (
+                  <li>
+                    <Icon name="clock" size={16} />
+                    Tổng thời lượng {formatDuration(totalMinutes)}
+                  </li>
+                )}
+                <li>
+                  <Icon name="globe" size={16} />
+                  Truy cập trọn đời, học mọi lúc
+                </li>
               </ul>
             </div>
           </aside>
@@ -187,7 +262,7 @@ export default function CourseDetailPage() {
             >
               {tab.label}
               {tab.id === 'curriculum' && ` (${lessons.length})`}
-              {tab.id === 'reviews' && currentReviewCount != null && ` (${currentReviewCount})`}
+              {tab.id === 'reviews' && revCount > 0 && ` (${revCount})`}
             </button>
           ))}
         </div>
@@ -216,7 +291,10 @@ export default function CourseDetailPage() {
                       {lesson.description && <p className="lesson-desc">{lesson.description}</p>}
                     </div>
                     {lesson.duration > 0 && (
-                      <span className="lesson-duration"><Icon name="clock" size={14} />{formatDuration(lesson.duration)}</span>
+                      <span className="lesson-duration">
+                        <Icon name="clock" size={14} />
+                        {formatDuration(lesson.duration)}
+                      </span>
                     )}
                   </li>
                 ))}
@@ -227,7 +305,7 @@ export default function CourseDetailPage() {
 
         {activeTab === 'reviews' && (
           <div role="tabpanel" id="panel-reviews" aria-labelledby="tab-reviews">
-            <CourseReviews courseId={id} />
+            <CourseReviews courseId={course.id} isEnrolled={Boolean(enrollment)} />
           </div>
         )}
       </section>

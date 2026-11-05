@@ -3,20 +3,38 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
-import { Alert, Button, CourseCard, EmptyState, Icon, ProgressBar, Spinner } from '../components/ui';
+import {
+  Alert,
+  BannerSkeleton,
+  Button,
+  CategoryGridSkeleton,
+  CourseCard,
+  CourseGridSkeleton,
+  EmptyState,
+  Icon,
+  VoucherStripSkeleton,
+} from '../components/ui';
 import { SITE } from '../config/site';
+import { useShopStore } from '../utils/shopStore';
+import { formatPrice } from '../utils/format';
 
 // Biểu tượng xoay vòng cho các ô danh mục (API danh mục không có icon riêng)
 const CATEGORY_ICONS = ['code', 'globe', 'chart', 'cpu', 'briefcase', 'pen'];
 const FEATURED_COUNT = 6;
 
 const CATEGORY_COLORS = [
-  { background: '#eef2ff', color: '#4f46e5' },
-  { background: '#f5f3ff', color: '#7c3aed' },
-  { background: '#ecfeff', color: '#0891b2' },
-  { background: '#fdf2f8', color: '#db2777' },
-  { background: '#fffbeb', color: '#d97706' },
-  { background: '#f0fdf4', color: '#16a34a' },
+  { background: '#eff6ff', color: '#2563eb' },
+];
+
+const QUICK_SERVICES = [
+  { icon: 'code', label: 'Lập trình Web', color: '#2563eb', bg: '#eff6ff', to: '/courses?q=Web' },
+  { icon: 'cpu', label: 'AI & Dữ liệu', color: '#2563eb', bg: '#eff6ff', to: '/courses?q=AI' },
+  { icon: 'pen', label: 'Thiết kế UI/UX', color: '#2563eb', bg: '#eff6ff', to: '/courses?q=UI' },
+  { icon: 'star', label: 'Khóa học VIP', color: '#2563eb', bg: '#eff6ff', to: '/courses' },
+  { icon: 'graduation', label: 'Góc học tập', color: '#2563eb', bg: '#eff6ff', to: '/my-courses' },
+  { icon: 'award', label: 'Cấp chứng chỉ', color: '#2563eb', bg: '#eff6ff', to: '/courses' },
+  { icon: 'tag', label: 'Ưu đãi Hot', color: '#2563eb', bg: '#eff6ff', to: '#home-vouchers' },
+  { icon: 'shield', label: 'Hỗ trợ 24/7', color: '#2563eb', bg: '#eff6ff', to: '/courses' },
 ];
 
 const FEATURES = [
@@ -25,12 +43,38 @@ const FEATURES = [
   { icon: 'users', title: 'Đánh giá minh bạch', desc: 'Xem nhận xét thật từ học viên trước khi đăng ký, và chia sẻ cảm nhận của bạn sau khi học.' },
 ];
 
+function BannerAnchor({ link, title, className, children }) {
+  const href = (link || '/courses').trim();
+  const isExternal = href.startsWith('http://') || href.startsWith('https://');
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" aria-label={title} className={className}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link to={href} aria-label={title} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 export default function HomePage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const {
+    activeBanners,
+    activeVouchers,
+    bannersLoading,
+    vouchersLoading,
+    isVoucherSaved,
+    saveUserVoucher,
+  } = useShopStore();
   const [categories, setCategories] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [nearFooter, setNearFooter] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -50,83 +94,240 @@ export default function HomePage() {
     };
   }, []);
 
-  const previewTitle = courses[0]?.title ?? 'Lập trình Web từ cơ bản đến nâng cao';
+  useEffect(() => {
+    const footer = document.querySelector('footer');
+    if (!footer) return undefined;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const top = footer.getBoundingClientRect().top;
+      setNearFooter(top < window.innerHeight - 140);
+    };
+    const onScrollOrResize = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  const primaryBanner = activeBanners.find((b) => b.type === 'HomeMain') || activeBanners[0];
+  const promoBanners = activeBanners.filter((b) => b.type === 'Promo');
+  const sideBanners = activeBanners.filter((b) => b.type === 'Side');
+  const floatLeftBanner = activeBanners.find((b) => b.type === 'FloatLeft');
+  const floatRightBanner = activeBanners.find((b) => b.type === 'FloatRight');
+  const leadPromoBanner = promoBanners[0];
+  const supportingBanners = [...promoBanners.slice(1), ...sideBanners];
+
+  function handleCopyVoucher(code) {
+    saveUserVoucher(code);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(code);
+    }
+  }
 
   return (
     <>
-      {/* Hero */}
-      <section className="hero">
-        <div className="container hero-grid">
-          <div>
-            <span className="badge badge-primary">
-              <Icon name="graduation" size={14} /> {SITE.tagline}
-            </span>
-            <h1 className="hero-title">
-              Học kỹ năng mới,<br />
-              <span className="hero-title-highlight" style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
-                mở lối sự nghiệp
-              </span>
-            </h1>
-            <p className="hero-desc">{SITE.description}</p>
-
-            <div className="hero-actions">
-              {isAuthenticated ? (
-                <Button size="lg" to="/profile">
-                  Xin chào, {user.fullName.split(' ').pop()} <Icon name="arrowRight" size={18} />
-                </Button>
-              ) : (
-                <Button size="lg" to="/register">
-                  Bắt đầu miễn phí <Icon name="arrowRight" size={18} />
-                </Button>
-              )}
-              <Button variant="secondary" size="lg" to="/courses">Xem khóa học</Button>
+      {/* Liễng treo 2 bên màn hình lớn */}
+      {(floatLeftBanner || floatRightBanner) && (
+        <>
+          {floatLeftBanner && (
+            <div
+              className={`store-float-banner is-left${nearFooter ? ' is-hidden' : ''}`}
+              aria-hidden={nearFooter}
+            >
+              <BannerAnchor
+                link={floatLeftBanner.link}
+                title={floatLeftBanner.title || 'Banner ưu đãi trái'}
+                className="store-float-banner-link"
+              >
+                <img src={floatLeftBanner.imageUrl} alt={floatLeftBanner.title || 'Banner ưu đãi'} />
+              </BannerAnchor>
             </div>
-
-            <div className="hero-stats">
-              <div>
-                <div className="hero-stat-value">100%</div>
-                <div className="hero-stat-label">Học trực tuyến</div>
-              </div>
-              <div>
-                <div className="hero-stat-value">24/7</div>
-                <div className="hero-stat-label">Truy cập bài giảng</div>
-              </div>
-              <div>
-                <div className="hero-stat-value">0đ</div>
-                <div className="hero-stat-label">Phí đăng ký tài khoản</div>
-              </div>
+          )}
+          {floatRightBanner && (
+            <div
+              className={`store-float-banner is-right${nearFooter ? ' is-hidden' : ''}`}
+              aria-hidden={nearFooter}
+            >
+              <BannerAnchor
+                link={floatRightBanner.link}
+                title={floatRightBanner.title || 'Banner ưu đãi phải'}
+                className="store-float-banner-link"
+              >
+                <img src={floatRightBanner.imageUrl} alt={floatRightBanner.title || 'Banner ưu đãi'} />
+              </BannerAnchor>
             </div>
-          </div>
+          )}
+        </>
+      )}
 
-          <div className="hero-visual" aria-hidden="true">
-            <div className="hero-preview">
-              <div className="hero-preview-thumb">
-                <span className="hero-preview-play"><Icon name="play" size={24} fill="currentColor" /></span>
+      {/* 1 & 2. Cụm Banner Trang chủ hoặc Khung xương khi đang tải */}
+      {bannersLoading ? (
+        <BannerSkeleton showSubBanners />
+      ) : (
+        <>
+          {primaryBanner && (
+            <section className="store-banner-top-section">
+              <div className="container">
+                <BannerAnchor
+                  link={primaryBanner.link}
+                  title={primaryBanner.title || SITE.name}
+                  className="store-banner-card is-primary"
+                >
+                  <img
+                    src={primaryBanner.imageUrl}
+                    alt={primaryBanner.title || SITE.name}
+                    className="store-banner-img"
+                  />
+                </BannerAnchor>
               </div>
-              <div className="hero-preview-body">
-                <div className="hero-preview-title">{previewTitle}</div>
-                <ProgressBar value={68} label={false} />
-                <div className="hero-preview-meta">
-                  <span>Bài 33 / 48</span>
-                  <span>68% hoàn thành</span>
+            </section>
+          )}
+
+          {(leadPromoBanner || supportingBanners.length > 0) && (
+            <section className="store-banner-sub-section">
+              <div className="container">
+                <div
+                  className={`store-banner-grid${
+                    leadPromoBanner && supportingBanners.length > 0 ? ' is-split' : ''
+                  }`}
+                >
+                  {leadPromoBanner && (
+                    <BannerAnchor
+                      link={leadPromoBanner.link}
+                      title={leadPromoBanner.title || 'Ưu đãi khóa học'}
+                      className="store-banner-card"
+                    >
+                      <img
+                        src={leadPromoBanner.imageUrl}
+                        alt={leadPromoBanner.title || 'Ưu đãi khóa học'}
+                        className="store-banner-img"
+                      />
+                    </BannerAnchor>
+                  )}
+
+                  {supportingBanners.length > 0 && (
+                    <div className={`store-banner-side-stack${leadPromoBanner ? '' : ' is-two-col'}`}>
+                      {supportingBanners.map((banner) => (
+                        <BannerAnchor
+                          key={banner.id}
+                          link={banner.link}
+                          title={banner.title || 'Ưu đãi khóa học'}
+                          className="store-banner-card"
+                        >
+                          <img
+                            src={banner.imageUrl}
+                            alt={banner.title || 'Ưu đãi khóa học'}
+                            className="store-banner-img"
+                          />
+                        </BannerAnchor>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            </section>
+          )}
+        </>
+      )}
 
-            <div className="hero-chip top">
-              <span className="hero-chip-icon" style={CATEGORY_COLORS[5]}><Icon name="checkCircle" size={18} /></span>
-              <div><strong>Hoàn thành bài 32</strong><span>Vừa xong</span></div>
-            </div>
-            <div className="hero-chip bottom">
-              <span className="hero-chip-icon" style={CATEGORY_COLORS[4]}><Icon name="star" size={18} fill="currentColor" /></span>
-              <div><strong>4.8 / 5</strong><span>Đánh giá trung bình</span></div>
-            </div>
+      {/* 3. Thanh Dịch vụ & Điều hướng nhanh (8 ô biểu tượng) */}
+      <section className="store-quick-nav-section">
+        <div className="container">
+          <div className="store-quick-nav-bar">
+            {QUICK_SERVICES.map((item) => {
+              const isHash = item.to.startsWith('#');
+              const Tag = isHash ? 'a' : Link;
+              const linkProps = isHash ? { href: item.to } : { to: item.to };
+              return (
+                <Tag key={item.label} {...linkProps} className="store-quick-nav-item">
+                  <div
+                    className="store-quick-nav-icon"
+                    style={{ background: item.bg, color: item.color }}
+                  >
+                    <Icon name={item.icon} size={26} />
+                  </div>
+                  <span className="store-quick-nav-label">{item.label}</span>
+                </Tag>
+              );
+            })}
           </div>
         </div>
       </section>
 
+      {/* 4. Ví Mã Giảm Giá Chớp Nhoáng ngay dưới cụm Banner */}
+      {(vouchersLoading || activeVouchers.length > 0) && (
+        <section id="home-vouchers" className="store-voucher-section">
+          <div className="container">
+            <div className="store-voucher-header">
+              <span className="store-voucher-header-icon">
+                <Icon name="tag" size={24} />
+              </span>
+              <h2 className="store-voucher-header-title">Mã Giảm Giá Chớp Nhoáng</h2>
+            </div>
+
+            {vouchersLoading ? (
+              <VoucherStripSkeleton count={4} />
+            ) : (
+              <div className="store-voucher-grid">
+                {activeVouchers.slice(0, 4).map((v) => {
+                  const isSaved = isVoucherSaved(v.code);
+                  return (
+                    <div key={v.id} className="store-ticket-card">
+                      <div className="store-ticket-dots" aria-hidden="true">
+                        {[0, 1, 2, 3, 4, 5].map((dot) => (
+                          <span key={dot} className="store-ticket-dot" />
+                        ))}
+                      </div>
+
+                      <div className="store-ticket-stub">
+                        <span>{v.type === 'percent' ? 'GIẢM GIÁ %' : 'GIẢM TIỀN'}</span>
+                      </div>
+
+                      <div className="store-ticket-body">
+                        <h4 className="store-ticket-title">
+                          {v.type === 'percent' ? `Giảm ${v.value}%` : `Giảm ${formatPrice(v.value)}`}
+                        </h4>
+                        <p className="store-ticket-code">{v.code}</p>
+                        <p className="store-ticket-desc">
+                          {v.description || `Đơn tối thiểu ${formatPrice(v.minOrderAmount)}`}
+                        </p>
+
+                        <div className="store-ticket-foot">
+                          <span className="store-ticket-exp">HSD: {v.endDate || '2026-12-31'}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyVoucher(v.code)}
+                            className={`store-ticket-btn${isSaved ? ' is-saved' : ''}`}
+                          >
+                            {isSaved ? (
+                              <>
+                                <Icon name="check" size={12} />
+                                <span>Đã Lưu</span>
+                              </>
+                            ) : (
+                              'Lưu Mã'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Danh mục */}
-      {categories.length > 0 && (
+      {(loading || categories.length > 0) && (
         <section className="section">
           <div className="container">
             <div className="section-head">
@@ -135,25 +336,29 @@ export default function HomePage() {
                 <p className="section-subtitle">Chọn lĩnh vực bạn quan tâm để bắt đầu.</p>
               </div>
             </div>
-            <div className="category-grid">
-              {categories.map((category, index) => (
-                <Link key={category.id} to={`/courses?categoryId=${category.id}`} className="category-tile">
-                  <span className="category-tile-icon" style={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}>
-                    <Icon name={CATEGORY_ICONS[index % CATEGORY_ICONS.length]} size={22} />
-                  </span>
-                  <div>
-                    <div className="category-tile-name">{category.name}</div>
-                    <div className="category-tile-count">Xem khóa học</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            {loading ? (
+              <CategoryGridSkeleton count={6} />
+            ) : (
+              <div className="category-grid">
+                {categories.map((category, index) => (
+                  <Link key={category.id} to={`/courses?categoryId=${category.id}`} className="category-tile">
+                    <span className="category-tile-icon" style={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}>
+                      <Icon name={CATEGORY_ICONS[index % CATEGORY_ICONS.length]} size={22} />
+                    </span>
+                    <div>
+                      <div className="category-tile-name">{category.name}</div>
+                      <div className="category-tile-count">Xem khóa học</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}
 
       {/* Khóa học mới nhất */}
-      <section id="featured-courses" className={`section${categories.length > 0 ? ' section-flush-top' : ''}`}>
+      <section id="featured-courses" className={`section${loading || categories.length > 0 ? ' section-flush-top' : ''}`}>
         <div className="container">
           <div className="section-head">
             <div>
@@ -164,7 +369,7 @@ export default function HomePage() {
           </div>
 
           {loading ? (
-            <div className="page-loading"><Spinner size="lg" /><span>Đang tải khóa học...</span></div>
+            <CourseGridSkeleton count={FEATURED_COUNT} />
           ) : error ? (
             <Alert variant="error">{error}</Alert>
           ) : courses.length === 0 ? (

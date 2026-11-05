@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { learningApi } from '../api/learningApi';
+import { LearningPageSkeleton } from '../components/ui';
 
 // Nguồn video dự phòng tốc độ cao (Fastly CDN của Video.js)
 const FALLBACK_VIDEO_URL = 'https://vjs.zencdn.net/v/oceans.mp4';
@@ -11,7 +12,7 @@ const FALLBACK_VIDEO_URL = 'https://vjs.zencdn.net/v/oceans.mp4';
 function getYouTubeEmbedUrl(url) {
     if (!url) return null;
     const match = url.match(
-        /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
+        /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
     );
     if (!match) return null;
     // Sử dụng no-cookie domain để hạn chế tối đa lỗi "Video unavailable"
@@ -25,11 +26,6 @@ function LessonVideoPlayer({ url, title }) {
     const [videoSrc, setVideoSrc] = useState(url);
     const [hasError, setHasError] = useState(false);
     const ytEmbedUrl = getYouTubeEmbedUrl(url);
-
-    useEffect(() => {
-        setVideoSrc(url);
-        setHasError(false);
-    }, [url]);
 
     if (!url) {
         return (
@@ -230,11 +226,7 @@ export default function LearningPage() {
     }
 
     if (loading) {
-        return (
-            <div className="container section">
-                <p>Đang tải phòng học...</p>
-            </div>
-        );
+        return <LearningPageSkeleton />;
     }
 
     return (
@@ -318,6 +310,7 @@ export default function LearningPage() {
                             </h2>
 
                             <LessonVideoPlayer
+                                key={selectedLesson.id || selectedLesson.videoUrl}
                                 url={selectedLesson.videoUrl}
                                 title={selectedLesson.title}
                             />

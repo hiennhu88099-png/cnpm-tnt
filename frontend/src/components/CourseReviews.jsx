@@ -1,44 +1,40 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { reviewApi } from '../api/reviewApi';
 import { useAuth } from '../auth/useAuth';
+import useApiQuery from '../hooks/useApiQuery';
 import { Alert, Avatar, Button, Card, EmptyState, StarRating } from './ui';
 import { formatDate } from '../utils/format';
 
-export default function CourseReviews({ courseId }) {
+export default function CourseReviews({ courseId, isEnrolled = false }) {
   const { user, isAuthenticated } = useAuth();
 
-  const [reviews, setReviews] = useState([]);
-  const [summary, setSummary] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
-  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const loadReviews = useCallback(async () => {
-    try {
-      const [reviewData, summaryData] = await Promise.all([
-        reviewApi.getReviews(courseId),
-        reviewApi.getSummary(courseId)
-      ]);
-
-      setReviews(reviewData.content || []);
-      setSummary(summaryData);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Không thể tải đánh giá');
-    } finally {
-      setLoading(false);
-    }
+  const fetchReviewBundle = useCallback(async () => {
+    const [reviewData, summaryData] = await Promise.all([
+      reviewApi.getReviews(courseId),
+      reviewApi.getSummary(courseId),
+    ]);
+    return {
+      reviews: reviewData.content || [],
+      summary: summaryData,
+    };
   }, [courseId]);
 
-  useEffect(() => {
-    loadReviews();
-  }, [loadReviews]);
+  const { data: bundle, error: queryError, loading, reload } = useApiQuery(fetchReviewBundle);
+  const reviews = bundle?.reviews ?? [];
+  const summary = bundle?.summary ?? null;
+  const error = actionError || queryError?.message || '';
+
+  const myReview = user ? reviews.find((r) => r.userId === user.id) : null;
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setError('');
+    setActionError('');
     setMessage('');
     setSaving(true);
 
@@ -46,151 +42,147 @@ export default function CourseReviews({ courseId }) {
       await reviewApi.createReview({
         courseId: Number(courseId),
         rating: Number(rating),
-        comment: comment.trim()
+        comment: comment.trim(),
       });
-
-      setMessage('Đánh giá của bạn đã được gửi thành công!');
+      setMessage('Cảm ơn bạn đã gửi đánh giá khóa học!');
       setComment('');
       setRating(5);
-      await loadReviews();
+      reload();
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể gửi đánh giá');
+      setActionError(err.response?.data?.message || 'Bạn cần đăng ký khóa học trước khi gửi đánh giá.');
     } finally {
       setSaving(false);
     }
   }
 
+  async function handleDelete(reviewId) {
+    setActionError('');
+    setMessage('');
+    try {
+      await reviewApi.deleteReview(reviewId);
+      setMessage('Đã xóa đánh giá của bạn.');
+      reload();
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Không thể xóa đánh giá');
+    }
+  }
+
   return (
-    <div className="course-reviews" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="stack">
       {summary && (
-        <Card style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-          <div style={{ textAlign: 'center', minWidth: '120px' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1, color: 'var(--color-primary, #6366f1)' }}>
-              {summary.averageRating != null ? summary.averageRating.toFixed(1) : '5.0'}
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1 }}>
+                {Number(summary.averageRating || 0).toFixed(1)}
+                <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--color-text-muted)' }}> / 5</span>
+              </div>
+              <div style={{ marginTop: '6px' }}>
+                <StarRating value={Number(summary.averageRating || 0)} count={summary.reviewCount || 0} />
+              </div>
             </div>
-            <div style={{ marginTop: '0.25rem' }}>
-              <StarRating value={summary.averageRating ?? 5} />
+            <div className="text-muted">
+              Dựa trên <strong>{summary.reviewCount || 0}</strong> nhận xét từ học viên đã tham gia khóa học.
             </div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted, #64748b)', marginTop: '0.25rem' }}>
-              {summary.reviewCount ?? 0} lượt đánh giá
-            </div>
-          </div>
-          <div style={{ flex: 1, fontSize: '0.95rem', color: 'var(--color-text-muted, #64748b)' }}>
-            Đánh giá trung bình từ các học viên đã hoàn thành hoặc đang tham gia khóa học này.
           </div>
         </Card>
       )}
 
-      {error && <Alert variant="error">{error}</Alert>}
-      {message && <Alert variant="success">{message}</Alert>}
+      <Alert variant="error">{error}</Alert>
+      <Alert variant="success">{message}</Alert>
 
-      {isAuthenticated ? (
-        <Card style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>Viết đánh giá của bạn</h3>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label htmlFor="review-rating" style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
-                Đánh giá chất lượng:
+      {isAuthenticated && isEnrolled && !myReview && (
+        <Card title="Viết đánh giá của bạn" subtitle="Chia sẻ trải nghiệm học tập của bạn với các học viên khác.">
+          <form onSubmit={handleSubmit}>
+            <div className="field">
+              <label className="field-label" htmlFor="review-rating">
+                Mức độ hài lòng
               </label>
               <select
                 id="review-rating"
-                className="form-control"
+                className="input"
                 value={rating}
                 onChange={(e) => setRating(Number(e.target.value))}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: 'var(--radius, 8px)',
-                  border: '1px solid var(--color-border, #cbd5e1)',
-                  background: 'var(--color-bg, #fff)',
-                  color: 'inherit'
-                }}
+                style={{ maxWidth: '220px' }}
               >
-                <option value={5}>⭐⭐⭐⭐⭐ (5 sao - Tuyệt vời)</option>
-                <option value={4}>⭐⭐⭐⭐ (4 sao - Rất tốt)</option>
-                <option value={3}>⭐⭐⭐ (3 sao - Khá)</option>
-                <option value={2}>⭐⭐ (2 sao - Cần cải thiện)</option>
-                <option value={1}>⭐ (1 sao - Chưa đạt)</option>
+                <option value={5}>★★★★★ — 5 sao (Rất tuyệt vời)</option>
+                <option value={4}>★★★★☆ — 4 sao (Tốt)</option>
+                <option value={3}>★★★☆☆ — 3 sao (Khá)</option>
+                <option value={2}>★★☆☆☆ — 2 sao (Trung bình)</option>
+                <option value={1}>★☆☆☆☆ — 1 sao (Cần cải thiện)</option>
               </select>
             </div>
 
-            <div>
-              <label htmlFor="review-comment" style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
-                Cảm nhận chi tiết:
+            <div className="field">
+              <label className="field-label" htmlFor="review-comment">
+                Nội dung nhận xét
               </label>
               <textarea
                 id="review-comment"
-                className="form-control"
+                className="input"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
+                placeholder="Khóa học giúp ích gì cho bạn? Giảng viên truyền đạt thế nào?"
                 maxLength={5000}
-                rows={3}
-                placeholder="Chia sẻ nhận xét của bạn về nội dung bài giảng, giảng viên..."
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius, 8px)',
-                  border: '1px solid var(--color-border, #cbd5e1)',
-                  background: 'var(--color-bg, #fff)',
-                  color: 'inherit',
-                  fontFamily: 'inherit'
-                }}
+                rows={4}
               />
             </div>
 
-            <div>
-              <Button type="submit" loading={saving} disabled={!comment.trim()}>
-                Gửi đánh giá
+            <div className="form-actions">
+              <Button type="submit" loading={saving}>
+                {saving ? 'Đang gửi...' : 'Gửi đánh giá'}
               </Button>
             </div>
           </form>
         </Card>
-      ) : (
-        <Card style={{ padding: '1.25rem', textAlign: 'center' }}>
-          <p style={{ margin: '0 0 0.75rem 0', color: 'var(--color-text-muted, #64748b)' }}>
-            Đăng nhập để chia sẻ cảm nhận của bạn về khóa học.
-          </p>
-          <Button to="/login" variant="ghost" size="sm">Đăng nhập ngay</Button>
-        </Card>
       )}
 
-      <div>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
-          Nhận xét của học viên ({reviews.length})
-        </h3>
-
-        {loading && <p style={{ color: 'var(--color-text-muted, #64748b)' }}>Đang tải đánh giá...</p>}
-
-        {!loading && reviews.length === 0 && (
+      <Card title={`Nhận xét của học viên (${reviews.length})`}>
+        {loading ? (
+          <p className="text-muted">Đang tải đánh giá...</p>
+        ) : reviews.length === 0 ? (
           <EmptyState
             icon="star"
             title="Chưa có đánh giá nào"
-            description="Hãy là người đầu tiên tham gia học và để lại nhận xét cho khóa học này!"
+            description="Hãy đăng ký khóa học và trở thành người đầu tiên để lại đánh giá."
           />
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {reviews.map((review) => (
-            <Card key={review.id} style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <Avatar name={review.fullName || 'Học viên'} size={36} />
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{review.fullName || 'Học viên'}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted, #64748b)' }}>
+        ) : (
+          <div className="stack">
+            {reviews.map((review) => (
+              <article
+                key={review.id}
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  paddingBottom: '16px',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+              >
+                <Avatar src={review.avatar} name={review.fullName || 'Học viên'} size={44} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <strong>{review.fullName || 'Học viên'}</strong>
+                    <span className="text-muted" style={{ fontSize: 'var(--text-xs)' }}>
                       {formatDate(review.createdAt)}
-                    </div>
+                    </span>
                   </div>
+                  <div style={{ margin: '4px 0 8px' }}>
+                    <StarRating value={review.rating} />
+                  </div>
+                  {review.comment && <p style={{ margin: 0 }}>{review.comment}</p>}
+                  {user && (user.id === review.userId || user.role === 'ADMIN') && (
+                    <div style={{ marginTop: '8px' }}>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => handleDelete(review.id)}>
+                        Xóa đánh giá
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <StarRating value={review.rating} />
-              </div>
-              <p style={{ margin: '0.5rem 0 0 0', color: 'inherit', lineHeight: 1.6 }}>
-                {review.comment}
-              </p>
-            </Card>
-          ))}
-        </div>
-      </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

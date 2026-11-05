@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 600" width="1400" height="600">
+  <!-- Clean White Background -->
+  <rect width="1400" height="600" fill="#ffffff" />
+
+  <!-- Subtle light grid pattern -->
+  <g stroke="#f1f5f9" stroke-width="1.5">
+    <line x1="0" y1="120" x2="1400" y2="120" />
+    <line x1="0" y1="240" x2="1400" y2="240" />
+    <line x1="0" y1="360" x2="1400" y2="360" />
+    <line x1="0" y1="480" x2="1400" y2="480" />
+    <line x1="280" y1="0" x2="280" y2="600" />
+    <line x1="560" y1="0" x2="560" y2="600" />
+    <line x1="840" y1="0" x2="840" y2="600" />
+    <line x1="1120" y1="0" x2="1120" y2="600" />
+  </g>
+
+  <!-- Soft Blue Accent Circles on White -->
+  <circle cx="1220" cy="110" r="240" fill="#eff6ff" />
+  <circle cx="960" cy="520" r="260" fill="#f8fafc" />
+
+  <!-- Left Content -->
+  <g transform="translate(84, 88)">
+    <!-- Pill badge -->
+    <rect x="0" y="0" width="320" height="42" rx="21" fill="#eff6ff" stroke="#bfdbfe" />
+    <circle cx="24" cy="21" r="6" fill="#2563eb" />
+    <text x="44" y="27" fill="#1d4ed8" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="800" letter-spacing="1.2">NỀN TẢNG HỌC TẬP EDUHUB 2026</text>
+
+    <!-- Main Headline -->
+    <text x="0" y="116" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="56" font-weight="900" letter-spacing="-1">Nâng Tầm Kỹ Năng Số</text>
+    <text x="0" y="186" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="56" font-weight="900" letter-spacing="-1">Mở Lối Sự Nghiệp Công Nghệ</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="242" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="21" font-weight="500">Hơn 100+ khóa học thực chiến Lập trình, AI, Thiết kế UI/UX &amp; Kinh doanh.</text>
+    <text x="0" y="274" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="21" font-weight="500">Học trực tuyến 24/7 trọn đời • Cấp chứng chỉ uy tín ngay khi hoàn thành.</text>
+
+    <!-- CTA Button -->
+    <rect x="0" y="318" width="256" height="60" rx="16" fill="#2563eb" />
+    <text x="38" y="355" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="800">KHÁM PHÁ NGAY →</text>
+
+    <!-- Promo Code Badge -->
+    <rect x="278" y="318" width="290" height="60" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4" />
+    <text x="302" y="343" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700">MÃ ƯU ĐÃI HỌC VIÊN MỚI</text>
+    <text x="302" y="367" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="19" font-weight="900">NEWSTUDENT (-20%)</text>
+  </g>
+
+  <!-- Right Visual Showcase Card (White Card on White Banner) -->
+  <g transform="translate(850, 74)">
+    <rect x="20" y="30" width="440" height="390" rx="26" fill="#ffffff" stroke="#e2e8f0" stroke-width="2" />
+    <rect x="48" y="58" width="384" height="190" rx="16" fill="#f1f5f9" stroke="#e2e8f0" />
+
+    <circle cx="240" cy="153" r="36" fill="#2563eb" />
+    <polygon points="232,137 232,169 257,153" fill="#ffffff" />
+
+    <rect x="48" y="270" width="130" height="28" rx="8" fill="#eff6ff" />
+    <text x="64" y="289" fill="#2563eb" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="800">FULLSTACK PRO</text>
+    <text x="48" y="328" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="800">ReactJS 19 &amp; Spring Boot</text>
+
+    <rect x="48" y="352" width="384" height="10" rx="5" fill="#e2e8f0" />
+    <rect x="48" y="352" width="290" height="10" rx="5" fill="#2563eb" />
+    <text x="48" y="390" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="700">48 bài giảng HD</text>
+    <text x="346" y="390" fill="#0f172a" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="800">4.9 ★ (1.2k)</text>
+  </g>
+</svg>

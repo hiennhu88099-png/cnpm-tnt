@@ -48,8 +48,8 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/error").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/courses/**", "/api/categories/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/webhooks/sepay", "/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/courses/**", "/api/categories/**", "/api/vouchers/**", "/api/banners/**", "/api/payment/config").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

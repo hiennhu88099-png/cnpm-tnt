@@ -1,0 +1,68 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: online-course-mysql-prod
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-course123}
+      MYSQL_DATABASE: ${DB_NAME:-online_course_db}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-course123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: online-course-backend-prod
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-online_course_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-course123}
+      DDL_AUTO: ${DDL_AUTO:-update}
+      JWT_SECRET: ${JWT_SECRET:-online_course_jwt_secret_key_2026_at_least_32_chars_long}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      SEPAY_BANK_CODE: ${SEPAY_BANK_CODE:-MB}
+      SEPAY_BANK_NAME: ${SEPAY_BANK_NAME:-MB Bank (Ngân hàng Quân Đội)}
+      SEPAY_ACCOUNT_NUMBER: ${SEPAY_ACCOUNT_NUMBER:-0000012345678}
+      SEPAY_ACCOUNT_HOLDER: ${SEPAY_ACCOUNT_HOLDER:-EDUHUB ACADEMY}
+      SEPAY_PREFIX: ${SEPAY_PREFIX:-EDUHUB}
+      SEPAY_WEBHOOK_SECRET: ${SEPAY_WEBHOOK_SECRET:-}
+    networks:
+      - app-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/}
+    container_name: online-course-frontend-prod
+    depends_on:
+      - backend
+    ports:
+      - "${APP_PORT:-80}:80"
+    networks:
+      - app-net
+    restart: unless-stopped
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  mysql_prod_data:

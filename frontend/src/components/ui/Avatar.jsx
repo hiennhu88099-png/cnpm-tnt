@@ -1,12 +1,24 @@
-// Ảnh đại diện; không có ảnh thì hiện chữ cái đầu của tên
+import { useState } from 'react';
+
+const DEFAULT_AVATAR = '/default-avatar.png';
+
+// Ảnh đại diện; không có ảnh riêng hoặc ảnh lỗi thì dùng ảnh mặc định /default-avatar.png
 export default function Avatar({ src, name = '', size = 36 }) {
-  const style = { width: size, height: size, fontSize: size * 0.42 };
-  if (src) {
-    return <img src={src} alt={name} className="avatar" style={style} />;
-  }
+  const [failedSrc, setFailedSrc] = useState('');
+  const style = { width: size, height: size };
+  const resolvedSrc = src && src !== failedSrc ? src : DEFAULT_AVATAR;
+
   return (
-    <span className="avatar" style={style} aria-label={name}>
-      {name.trim().charAt(0).toUpperCase() || '?'}
-    </span>
+    <img
+      src={resolvedSrc}
+      alt={name}
+      className="avatar"
+      style={style}
+      onError={() => {
+        if (src && failedSrc !== src) {
+          setFailedSrc(src);
+        }
+      }}
+    />
   );
 }

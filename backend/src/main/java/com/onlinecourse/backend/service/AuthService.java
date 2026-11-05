@@ -40,6 +40,7 @@ public class AuthService {
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone() == null || request.getPhone().isBlank() ? null : request.getPhone().trim())
+                .avatar("/default-avatar.png")
                 .role(Role.USER)
                 .status(UserStatus.ACTIVE)
                 .build();

@@ -9,4 +9,13 @@ export const userApi = {
   getMe: () => client.get('/api/users/me').then((res) => res.data),
   updateProfile: (data) => client.put('/api/users/me', data).then((res) => res.data),
   changePassword: (data) => client.put('/api/users/me/password', data),
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return client
+      .post('/api/uploads', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((res) => res.data);
+  },
 };

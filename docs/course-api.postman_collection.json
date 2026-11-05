@@ -1,7 +1,7 @@
-{
+﻿{
   "info": {
-    "name": "TV2 - Course Management API",
-    "description": "Kiểm thử API Danh mục / Khóa học / Bài học (TV2).\n\nChuẩn bị: backend chạy ở {{baseUrl}}, đã có 1 tài khoản ADMIN (cách tạo xem phần Tạo tài khoản admin trong docs/tv2/TV2_API.md).\nSửa biến adminEmail / adminPassword của collection rồi chạy toàn bộ bằng Collection Runner theo đúng thứ tự.",
+    "name": "Course Management API",
+    "description": "Kiểm thử API Danh mục / Khóa học / Bài học.\n\nChuẩn bị: backend chạy ở {{baseUrl}}, đã có 1 tài khoản ADMIN (cách tạo xem phần Tạo tài khoản admin trong docs/course-api.md).\nSửa biến adminEmail / adminPassword của collection rồi chạy toàn bộ bằng Collection Runner theo đúng thứ tự.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -19,7 +19,7 @@
     },
     {
       "key": "userEmail",
-      "value": "tv2-student@example.com"
+      "value": "student@example.com"
     },
     {
       "key": "userPassword",
@@ -1854,3 +1854,4 @@
     }
   ]
 }
+
