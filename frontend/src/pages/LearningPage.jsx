@@ -1,253 +1,455 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { learningApi } from '../api/learningApi';
-import { Alert, Badge, Button, Card, EmptyState, Icon, ProgressBar, Spinner } from '../components/ui';
-import { formatDuration } from '../config/course';
 
-function getYoutubeEmbedUrl(url) {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes('youtube.com')) {
-      const v = parsed.searchParams.get('v');
-      if (v) return `https://www.youtube.com/embed/${v}`;
-      if (parsed.pathname.startsWith('/embed/')) return url;
+// Nguồn video dự phòng tốc độ cao (Fastly CDN của Video.js)
+const FALLBACK_VIDEO_URL = 'https://vjs.zencdn.net/v/oceans.mp4';
+
+/**
+ * Trích xuất ID YouTube nếu có
+ */
+function getYouTubeEmbedUrl(url) {
+    if (!url) return null;
+    const match = url.match(
+        /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
+    );
+    if (!match) return null;
+    // Sử dụng no-cookie domain để hạn chế tối đa lỗi "Video unavailable"
+    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&modestbranding=1`;
+}
+
+/**
+ * Trình phát video chuẩn HTML5 đa năng, tự động fallback nếu link lỗi
+ */
+function LessonVideoPlayer({ url, title }) {
+    const [videoSrc, setVideoSrc] = useState(url);
+    const [hasError, setHasError] = useState(false);
+    const ytEmbedUrl = getYouTubeEmbedUrl(url);
+
+    if (!url) {
+        return (
+            <div
+                style={{
+                    padding: '48px 24px',
+                    textAlign: 'center',
+                    background: '#f1f5f9',
+                    borderRadius: '12px',
+                    color: '#64748b'
+                }}
+            >
+                <p style={{ margin: 0 }}>Bài học này chưa được gắn video bài giảng.</p>
+            </div>
+        );
     }
-    if (parsed.hostname === 'youtu.be') {
-      const id = parsed.pathname.slice(1);
-      if (id) return `https://www.youtube.com/embed/${id}`;
+
+    // Nếu người dùng nhập link YouTube
+    if (ytEmbedUrl) {
+        return (
+            <div
+                style={{
+                    position: 'relative',
+                    width: '100%',
+                    paddingTop: '56.25%',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    background: '#000',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+            >
+                <iframe
+                    key={ytEmbedUrl}
+                    src={ytEmbedUrl}
+                    title={title || 'Video bài giảng'}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        border: 'none'
+                    }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                />
+            </div>
+        );
     }
-  } catch {
-    return null;
-  }
-  return null;
+
+    // Mặc định: Trình phát MP4 chuẩn HTML5 với cơ chế tự động chuyển nguồn dự phòng nếu lỗi
+    return (
+        <div
+            style={{
+                borderRadius: '12px',
+                overflow: 'hidden',
+                background: '#000',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}
+        >
+            <video
+                key={videoSrc}
+                controls
+                playsInline
+                preload="metadata"
+                onError={() => {
+                    if (videoSrc !== FALLBACK_VIDEO_URL) {
+                        setVideoSrc(FALLBACK_VIDEO_URL);
+                    } else {
+                        setHasError(true);
+                    }
+                }}
+                style={{
+                    width: '100%',
+                    display: 'block',
+                    aspectRatio: '16/9',
+                    background: '#000'
+                }}
+                src={videoSrc}
+            >
+                Trình duyệt không hỗ trợ xem video trực tiếp.
+            </video>
+
+            {hasError && (
+                <div
+                    style={{
+                        padding: '12px 16px',
+                        background: '#fef2f2',
+                        color: '#b91c1c',
+                        fontSize: '14px',
+                        textAlign: 'center'
+                    }}
+                >
+                    Không thể phát trực tiếp video từ nguồn này.{' '}
+                    <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                        Bấm vào đây để mở video ở tab mới ↗
+                    </a>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default function LearningPage() {
-  const { courseId } = useParams();
+    const { courseId } = useParams();
 
-  const [lessons, setLessons] = useState([]);
-  const [selectedLesson, setSelectedLesson] = useState(null);
-  const [progress, setProgress] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+    const [lessons, setLessons] = useState([]);
+    const [selectedLesson, setSelectedLesson] = useState(null);
+    const [progress, setProgress] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
 
-  useEffect(() => {
-    let active = true;
+    useEffect(() => {
+        let active = true;
 
-    async function loadData() {
-      setLoading(true);
-      setError('');
+        async function loadData() {
+            setLoading(true);
+            setError('');
 
-      try {
-        const [lessonData, progressData] = await Promise.all([
-          learningApi.getLessons(courseId),
-          learningApi.getProgress(courseId),
-        ]);
+            try {
+                const [lessonData, progressData] =
+                    await Promise.all([
+                        learningApi.getLessons(courseId),
+                        learningApi.getProgress(courseId)
+                    ]);
 
-        if (active) {
-          setLessons(lessonData);
-          const firstUnfinished = lessonData.find((l) => !l.completed) || lessonData[0] || null;
-          setSelectedLesson(firstUnfinished);
-          setProgress(progressData);
+                if (active) {
+                    setLessons(lessonData);
+                    setSelectedLesson(lessonData[0] || null);
+                    setProgress(progressData);
+                }
+
+            } catch (err) {
+                if (active) {
+                    setError(
+                        err.response?.data?.message ||
+                        'Không thể tải nội dung bài học'
+                    );
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
         }
-      } catch (err) {
-        if (active) {
-          setError(err.response?.data?.message || 'Bạn cần đăng ký khóa học này trước khi vào phòng học.');
+
+        loadData();
+
+        return () => {
+            active = false;
+        };
+
+    }, [courseId]);
+
+    async function handleComplete() {
+        if (!selectedLesson || saving) {
+            return;
         }
-      } finally {
-        if (active) {
-          setLoading(false);
+
+        setSaving(true);
+        setError('');
+
+        try {
+            const result = await learningApi.completeLesson(
+                selectedLesson.id
+            );
+
+            setProgress(result);
+
+            setLessons(oldLessons =>
+                oldLessons.map(item =>
+                    item.id === selectedLesson.id
+                        ? { ...item, completed: true }
+                        : item
+                )
+            );
+
+            setSelectedLesson(old => ({
+                ...old,
+                completed: true
+            }));
+
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                'Không thể cập nhật tiến độ'
+            );
+        } finally {
+            setSaving(false);
         }
-      }
     }
 
-    loadData();
-    return () => {
-      active = false;
-    };
-  }, [courseId]);
-
-  async function handleComplete() {
-    if (!selectedLesson || saving) return;
-
-    setSaving(true);
-    setError('');
-
-    try {
-      const result = await learningApi.completeLesson(selectedLesson.id);
-      setProgress(result);
-
-      setLessons((oldLessons) =>
-        oldLessons.map((lesson) =>
-          lesson.id === selectedLesson.id ? { ...lesson, completed: true } : lesson,
-        ),
-      );
-      setSelectedLesson((old) => ({ ...old, completed: true }));
-    } catch (err) {
-      setError(err.response?.data?.message || 'Không thể cập nhật tiến độ bài học');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="container section">
-        <Spinner label="Đang tải phòng học trực tuyến..." />
-      </div>
-    );
-  }
-
-  const embedUrl = getYoutubeEmbedUrl(selectedLesson?.videoUrl);
-  const pct = Math.round(Number(progress?.progressPercentage ?? 0));
-
-  return (
-    <div className="container section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <Link to="/my-courses" className="course-breadcrumb" style={{ margin: 0 }}>
-          ← Quay lại Khóa học của tôi
-        </Link>
-        <Button variant="secondary" size="sm" to={`/courses/${courseId}`}>
-          Trang thông tin khóa học & Đánh giá
-        </Button>
-      </div>
-
-      <Alert variant="error">{error}</Alert>
-
-      {progress && (
-        <Card className="kit-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-            <strong>Tiến độ khóa học</strong>
-            <span>
-              Đã hoàn thành <strong>{progress.completedLessons}</strong> / {progress.totalLessons} bài học ({pct}%)
-            </span>
-          </div>
-          <ProgressBar value={pct} />
-        </Card>
-      )}
-
-      {lessons.length === 0 ? (
-        <EmptyState
-          icon="layers"
-          title="Khóa học chưa có bài học"
-          description="Giảng viên đang cập nhật nội dung video cho khóa học này."
-        />
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.8fr) minmax(280px, 1fr)',
-            gap: '24px',
-            alignItems: 'start',
-          }}
-        >
-          <Card>
-            {selectedLesson && (
-              <div className="stack">
-                {embedUrl ? (
-                  <div style={{ position: 'relative', aspectRatio: '16 / 9', width: '100%', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
-                    <iframe
-                      key={selectedLesson.id}
-                      src={embedUrl}
-                      title={selectedLesson.title}
-                      style={{ width: '100%', height: '100%', border: 0 }}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                ) : selectedLesson.videoUrl ? (
-                  <video
-                    key={selectedLesson.id}
-                    controls
-                    preload="metadata"
-                    playsInline
-                    style={{ width: '100%', borderRadius: '12px', background: '#000', aspectRatio: '16 / 9' }}
-                    src={selectedLesson.videoUrl}
-                  >
-                    Trình duyệt không hỗ trợ phát video.
-                  </video>
-                ) : (
-                  <EmptyState icon="play" title="Bài học chưa có video" />
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-                  <div>
-                    <Badge variant={selectedLesson.completed ? 'success' : 'primary'}>
-                      {selectedLesson.completed ? 'Đã hoàn thành' : `Bài ${selectedLesson.lessonOrder}`}
-                    </Badge>
-                    <h2 style={{ marginTop: '8px', marginBottom: '4px' }}>{selectedLesson.title}</h2>
-                    {selectedLesson.duration > 0 && (
-                      <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
-                        Thời lượng: {formatDuration(selectedLesson.duration)}
-                      </span>
-                    )}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant={selectedLesson.completed ? 'secondary' : 'primary'}
-                    loading={saving}
-                    disabled={saving || selectedLesson.completed}
-                    onClick={handleComplete}
-                  >
-                    <Icon name="check" size={16} />
-                    {selectedLesson.completed ? 'Đã hoàn thành bài học' : 'Đánh dấu hoàn thành'}
-                  </Button>
-                </div>
-
-                {selectedLesson.description && (
-                  <p className="prose" style={{ margin: 0 }}>
-                    {selectedLesson.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </Card>
-
-          <Card title={`Danh sách bài học (${lessons.length})`}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {lessons.map((lesson, index) => {
-                const isActive = selectedLesson?.id === lesson.id;
-                return (
-                  <button
-                    key={lesson.id}
-                    type="button"
-                    onClick={() => setSelectedLesson(lesson)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      width: '100%',
-                      padding: '12px 14px',
-                      textAlign: 'left',
-                      border: isActive ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      borderRadius: '10px',
-                      background: isActive ? 'var(--color-primary-soft)' : 'var(--color-surface)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: isActive ? 700 : 600, fontSize: 'var(--text-sm)' }}>
-                        {index + 1}. {lesson.title}
-                      </div>
-                      {lesson.duration > 0 && (
-                        <div className="text-muted" style={{ fontSize: 'var(--text-xs)', marginTop: '2px' }}>
-                          {formatDuration(lesson.duration)}
-                        </div>
-                      )}
-                    </div>
-                    {lesson.completed && <Badge variant="success">✓ Xong</Badge>}
-                  </button>
-                );
-              })}
+    if (loading) {
+        return (
+            <div className="container section">
+                <p>Đang tải phòng học...</p>
             </div>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-}
+        );
+    }
 
+    return (
+        <div className="container section">
+            <div style={{ marginBottom: '16px' }}>
+                <Link
+                    to="/my-courses"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: 'var(--color-primary, #4f46e5)',
+                        textDecoration: 'none',
+                        fontWeight: 600
+                    }}
+                >
+                    ← Quay lại khóa học của tôi
+                </Link>
+            </div>
+
+            <h1 style={{ marginBottom: '16px' }}>Phòng học trực tuyến</h1>
+
+            {error && (
+                <div
+                    role="alert"
+                    style={{
+                        padding: '12px 16px',
+                        background: '#fef2f2',
+                        color: '#b91c1c',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        marginBottom: '20px'
+                    }}
+                >
+                    {error}
+                </div>
+            )}
+
+            {progress && (
+                <div
+                    style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '16px 20px',
+                        marginBottom: '24px'
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <strong style={{ fontSize: '15px' }}>Tiến độ học tập</strong>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary, #4f46e5)' }}>
+                            {Math.round(progress.progressPercentage ?? 0)}%
+                        </span>
+                    </div>
+
+                    <progress
+                        value={progress.progressPercentage ?? 0}
+                        max="100"
+                        style={{ width: '100%', height: '10px', borderRadius: '5px' }}
+                    />
+
+                    <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#64748b' }}>
+                        Đã hoàn thành {progress.completedLessons} / {progress.totalLessons} bài học
+                    </p>
+                </div>
+            )}
+
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1.8fr) minmax(280px, 1fr)',
+                    gap: '24px',
+                    alignItems: 'start'
+                }}
+            >
+                <main>
+                    {selectedLesson ? (
+                        <>
+                            <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>
+                                {selectedLesson.title}
+                            </h2>
+
+                            <LessonVideoPlayer
+                                key={selectedLesson.id || selectedLesson.videoUrl}
+                                url={selectedLesson.videoUrl}
+                                title={selectedLesson.title}
+                            />
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '12px',
+                                    marginTop: '20px',
+                                    paddingBottom: '20px',
+                                    borderBottom: '1px solid #e2e8f0'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <span style={{ color: '#64748b', fontSize: '14px' }}>
+                                        Thời lượng: ~{selectedLesson.duration ?? 15} phút
+                                    </span>
+                                    {selectedLesson.videoUrl && (
+                                        <a
+                                            href={selectedLesson.videoUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ color: '#4f46e5', fontSize: '13px', textDecoration: 'none' }}
+                                        >
+                                            Mở video trong tab mới ↗
+                                        </a>
+                                    )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleComplete}
+                                    disabled={saving || selectedLesson.completed}
+                                    style={{
+                                        padding: '10px 20px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: selectedLesson.completed
+                                            ? '#16a34a'
+                                            : 'var(--color-primary, #4f46e5)',
+                                        color: '#ffffff',
+                                        fontWeight: 600,
+                                        cursor: selectedLesson.completed || saving ? 'default' : 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {selectedLesson.completed
+                                        ? '✓ Đã hoàn thành'
+                                        : saving
+                                            ? 'Đang lưu...'
+                                            : 'Đánh dấu hoàn thành'}
+                                </button>
+                            </div>
+
+                            <div style={{ marginTop: '20px' }}>
+                                <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>Mô tả bài học</h3>
+                                <p style={{ color: '#334155', lineHeight: '1.6', margin: 0 }}>
+                                    {selectedLesson.description || 'Không có mô tả bổ sung cho bài học này.'}
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <p>Khóa học chưa có bài học.</p>
+                    )}
+                </main>
+
+                <aside
+                    style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        maxHeight: '80vh',
+                        overflowY: 'auto'
+                    }}
+                >
+                    <h3 style={{ fontSize: '16px', marginBottom: '14px' }}>Danh sách bài học</h3>
+
+                    {lessons.map((lesson, index) => {
+                        const isSelected = selectedLesson?.id === lesson.id;
+                        return (
+                            <button
+                                key={lesson.id}
+                                type="button"
+                                onClick={() => setSelectedLesson(lesson)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    width: '100%',
+                                    padding: '12px 14px',
+                                    marginBottom: '8px',
+                                    textAlign: 'left',
+                                    border: isSelected ? '1.5px solid var(--color-primary, #4f46e5)' : '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    background: isSelected ? '#eef2ff' : '#ffffff',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: isSelected ? 600 : 500,
+                                        color: isSelected ? 'var(--color-primary, #4f46e5)' : '#1e293b'
+                                    }}
+                                >
+                                    {index + 1}. {lesson.title}
+                                </span>
+
+                                <span
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        background: lesson.completed ? '#dcfce7' : '#f1f5f9',
+                                        color: lesson.completed ? '#16a34a' : '#94a3b8',
+                                        fontSize: '12px',
+                                        fontWeight: 700,
+                                        flexShrink: 0,
+                                        marginLeft: '8px'
+                                    }}
+                                >
+                                    {lesson.completed ? '✓' : ''}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </aside>
+            </div>
+        </div>
+    );
+}

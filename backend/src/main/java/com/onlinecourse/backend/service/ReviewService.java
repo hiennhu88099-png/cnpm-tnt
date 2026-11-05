@@ -168,22 +168,22 @@ public class ReviewService {
     // Admin xem tat ca danh gia
     @Transactional(readOnly = true)
     public PageResponse<ReviewResponse> adminList(
+            ReviewStatus status,
             int page,
             int size) {
 
         checkPagination(page, size);
 
-        return PageResponse.from(
-            reviewRepository.findAll(
-                PageRequest.of(
+        var pageable = PageRequest.of(
                     page,
                     size,
                     Sort.by(
                         Sort.Direction.DESC,
                         "createdAt"
                     )
-                )
-            ),
+                );
+        return PageResponse.from(
+            status == null ? reviewRepository.findAll(pageable) : reviewRepository.findAllByStatus(status, pageable),
             this::toResponse
         );
     }

@@ -14,6 +14,7 @@ export default function useApiQuery(fetcher) {
   const [state, setState] = useState({ source: null, reloadCount: -1, data: undefined, error: null });
 
   useEffect(() => {
+    if (typeof fetcher !== 'function') return undefined;
     let ignore = false;
     fetcher().then(
       (data) => {

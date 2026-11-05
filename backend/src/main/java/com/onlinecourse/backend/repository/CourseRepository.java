@@ -14,6 +14,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
+    long countByStatus(CourseStatus status);
+
     /**
      * Search courses by optional keyword (title/description), category and statuses (null = no filter).
      * The public listing always passes PUBLISHED + ACTIVE so DRAFT courses are never exposed.

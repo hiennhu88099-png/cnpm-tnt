@@ -13,6 +13,11 @@ import java.util.Optional;
 public interface ReviewRepository
         extends JpaRepository<Review, Long> {
 
+    long countByStatus(ReviewStatus status);
+
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.status = :status")
+    Double averageRatingByStatus(@Param("status") ReviewStatus status);
+
     boolean existsByUserIdAndCourseId(
         Long userId,
         Long courseId
@@ -44,6 +49,9 @@ public interface ReviewRepository
     @Override
     @EntityGraph(attributePaths = {"user", "course"})
     Page<Review> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user", "course"})
+    Page<Review> findAllByStatus(ReviewStatus status, Pageable pageable);
 
     @Override
     @EntityGraph(attributePaths = {"user", "course"})

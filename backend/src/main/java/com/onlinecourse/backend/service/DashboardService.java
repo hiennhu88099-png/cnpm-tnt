@@ -5,6 +5,10 @@ import com.onlinecourse.backend.repository.CourseRepository;
 import com.onlinecourse.backend.repository.EnrollmentRepository;
 import com.onlinecourse.backend.repository.ReviewRepository;
 import com.onlinecourse.backend.repository.UserRepository;
+import com.onlinecourse.backend.entity.UserStatus;
+import com.onlinecourse.backend.entity.CourseStatus;
+import com.onlinecourse.backend.entity.EnrollmentStatus;
+import com.onlinecourse.backend.entity.ReviewStatus;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,9 +29,24 @@ public class DashboardService {
 
         return new DashboardSummaryResponse(
             userRepository.count(),
+            userRepository.countByStatus(UserStatus.ACTIVE),
+            userRepository.countByStatus(UserStatus.BLOCKED),
             courseRepository.count(),
+            courseRepository.countByStatus(CourseStatus.PUBLISHED),
+            courseRepository.countByStatus(CourseStatus.DRAFT),
             enrollmentRepository.count(),
-            reviewRepository.count()
+            enrollmentRepository.countByStatus(EnrollmentStatus.ACTIVE),
+            enrollmentRepository.countByStatus(EnrollmentStatus.COMPLETED),
+            reviewRepository.count(),
+            reviewRepository.countByStatus(ReviewStatus.APPROVED),
+            reviewRepository.countByStatus(ReviewStatus.PENDING),
+            reviewRepository.countByStatus(ReviewStatus.HIDDEN),
+            averageApprovedRating()
         );
+    }
+
+    private double averageApprovedRating() {
+        Double average = reviewRepository.averageRatingByStatus(ReviewStatus.APPROVED);
+        return average == null ? 0.0 : average;
     }
 }

@@ -1,117 +1,218 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
 import { reviewApi } from '../api/reviewApi';
-import useApiQuery from '../hooks/useApiQuery';
-import Pagination from '../components/course/Pagination';
-import { Alert, Badge, Button, Card, EmptyState, Spinner, StarRating } from '../components/ui';
-import { formatDate } from '../utils/format';
 
 export default function AdminReviewPage() {
-  const [page, setPage] = useState(0);
-  const [updatingId, setUpdatingId] = useState(null);
-  const [actionError, setActionError] = useState('');
 
-  const fetchReviews = useCallback(() => reviewApi.getAdminReviews({ page, size: 10 }), [page]);
-  const { data: result, error: queryError, loading, reload } = useApiQuery(fetchReviews);
+    const [reviews, setReviews] = useState([]);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [status, setStatus] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [updatingId, setUpdatingId] = useState(null);
+    const [error, setError] = useState('');
 
-  const reviews = result?.content ?? [];
-  const totalPages = result?.totalPages ?? 0;
-  const error = actionError || queryError?.message || '';
+    const loadReviews = useCallback(async () => {
+        setLoading(true);
+        setError('');
 
-  async function changeStatus(id, status) {
-    setUpdatingId(id);
-    setActionError('');
+        try {
+            const data = await reviewApi.getAdminReviews({
+                page,
+                size: 10,
+                status: status || undefined
+            });
 
-    try {
-      await reviewApi.updateReviewStatus(id, status);
-      reload();
-    } catch (err) {
-      setActionError(err.response?.data?.message || 'Không thể cập nhật trạng thái đánh giá');
-    } finally {
-      setUpdatingId(null);
+            setReviews(data.content ?? []);
+            setTotalPages(data.totalPages ?? 0);
+
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                'Không thể tải đánh giá'
+            );
+        } finally {
+            setLoading(false);
+        }
+    }, [page, status]);
+
+    useEffect(() => {
+        let active = true;
+
+        async function fetchReviews() {
+            setLoading(true);
+            setError('');
+            try {
+                const data = await reviewApi.getAdminReviews({
+                    page,
+                    size: 10,
+                    status: status || undefined
+                });
+                if (active) {
+                    setReviews(data.content ?? []);
+                    setTotalPages(data.totalPages ?? 0);
+                }
+            } catch (err) {
+                if (active) {
+                    setError(
+                        err.response?.data?.message ||
+                        'Không thể tải đánh giá'
+                    );
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        fetchReviews();
+
+        return () => {
+            active = false;
+        };
+    }, [page, status]);
+
+    async function changeStatus(id, status) {
+        setUpdatingId(id);
+        setError('');
+
+        try {
+            await reviewApi.updateReviewStatus(id, status);
+            await loadReviews();
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                'Không thể cập nhật trạng thái'
+            );
+        } finally {
+            setUpdatingId(null);
+        }
     }
-  }
 
-  return (
-    <div className="stack">
-      <div className="admin-head">
-        <div>
-          <h1 className="admin-title">Kiểm duyệt đánh giá</h1>
-          <p className="text-muted">Hiển thị hoặc ẩn các nhận xét không phù hợp trên trang khóa học.</p>
+    return (
+        <div className="container section">
+
+            <h1>Quản lý đánh giá</h1>
+
+            <p>
+                Kiểm tra và quản lý các đánh giá khóa học.
+            </p>
+
+            <label className="admin-review-filter">Lọc trạng thái
+                <select value={status} onChange={event => { setStatus(event.target.value); setPage(0); }}>
+                    <option value="">Tất cả</option>
+                    <option value="PENDING">Chờ xử lý</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="HIDDEN">Đã ẩn</option>
+                </select>
+            </label>
+
+            {error && <p role="alert">{error}</p>}
+
+            {loading ? (
+                <p>Đang tải đánh giá...</p>
+            ) : (
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%' }}>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Học viên</th>
+                                <th>Khóa học</th>
+                                <th>Số sao</th>
+                                <th>Nội dung</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {reviews.map(review => (
+                                <tr key={review.id}>
+                                    <td>{review.id}</td>
+                                    <td>{review.fullName}</td>
+                                    <td>{review.courseTitle}</td>
+                                    <td>{review.rating}/5</td>
+                                    <td>{review.comment}</td>
+                                    <td>{review.status}</td>
+                                    <td>
+                                        {review.status !== 'APPROVED' && (
+                                            <button
+                                                type="button"
+                                                disabled={
+                                                    updatingId === review.id
+                                                }
+                                                onClick={() =>
+                                                    changeStatus(
+                                                        review.id,
+                                                        'APPROVED'
+                                                    )
+                                                }
+                                            >
+                                                Hiển thị
+                                            </button>
+                                        )}
+
+                                        {review.status !== 'HIDDEN' && (
+                                            <button
+                                                type="button"
+                                                disabled={
+                                                    updatingId === review.id
+                                                }
+                                                onClick={() =>
+                                                    changeStatus(
+                                                        review.id,
+                                                        'HIDDEN'
+                                                    )
+                                                }
+                                            >
+                                                Ẩn
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {reviews.length === 0 && (
+                        <p>Chưa có đánh giá nào.</p>
+                    )}
+                </div>
+            )}
+
+            <div
+                style={{
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'center',
+                    marginTop: '20px'
+                }}
+            >
+                <button
+                    type="button"
+                    disabled={page === 0 || loading}
+                    onClick={() => setPage(p => p - 1)}
+                >
+                    Trang trước
+                </button>
+
+                <span>
+                    Trang {page + 1} / {Math.max(1, totalPages)}
+                </span>
+
+                <button
+                    type="button"
+                    disabled={
+                        loading ||
+                        page + 1 >= totalPages
+                    }
+                    onClick={() => setPage(p => p + 1)}
+                >
+                    Trang sau
+                </button>
+            </div>
         </div>
-      </div>
-
-      <Alert variant="error">{error}</Alert>
-
-      <Card>
-        {loading ? (
-          <Spinner label="Đang tải đánh giá..." />
-        ) : reviews.length === 0 ? (
-          <EmptyState icon="star" title="Chưa có đánh giá nào" />
-        ) : (
-          <div className="table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Học viên</th>
-                  <th>Khóa học</th>
-                  <th>Đánh giá</th>
-                  <th>Nội dung</th>
-                  <th>Ngày gửi</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviews.map((review) => (
-                  <tr key={review.id}>
-                    <td>
-                      <strong>{review.fullName || `User #${review.userId}`}</strong>
-                    </td>
-                    <td>{review.courseTitle || `Khóa học #${review.courseId}`}</td>
-                    <td>
-                      <StarRating value={review.rating} />
-                    </td>
-                    <td style={{ maxWidth: '280px' }}>{review.comment || '—'}</td>
-                    <td>{formatDate(review.createdAt)}</td>
-                    <td>
-                      <Badge variant={review.status === 'APPROVED' ? 'success' : 'neutral'}>
-                        {review.status === 'APPROVED' ? 'Hiển thị' : 'Đã ẩn'}
-                      </Badge>
-                    </td>
-                    <td>
-                      <div className="admin-row-actions">
-                        {review.status !== 'APPROVED' ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            loading={updatingId === review.id}
-                            onClick={() => changeStatus(review.id, 'APPROVED')}
-                          >
-                            Hiển thị
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            loading={updatingId === review.id}
-                            onClick={() => changeStatus(review.id, 'HIDDEN')}
-                          >
-                            Ẩn
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-      </Card>
-    </div>
-  );
+    );
 }

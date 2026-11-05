@@ -18,12 +18,14 @@ public class AdminEnrollmentController {
     public PageResponse<EnrollmentResponse> getEnrollments(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
         return enrollmentService.adminList(
             userId,
             courseId,
+            keyword,
             page,
             size
         );

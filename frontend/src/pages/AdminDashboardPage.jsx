@@ -1,109 +1,98 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import client from '../api/client';
-import { Alert, Card, Icon, Spinner } from '../components/ui';
+import { Icon } from '../components/ui';
 
-export default function AdminDashboardPage() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+const number = value => Number(value ?? 0).toLocaleString('vi-VN');
 
-  useEffect(() => {
-    let active = true;
+const metrics = [
+    { key: 'totalUsers', title: 'Người dùng', caption: 'Tổng tài khoản', icon: 'users', tone: 'violet', href: '/admin/users' },
+    { key: 'totalCourses', title: 'Khóa học', caption: 'Tất cả trạng thái', icon: 'book', tone: 'blue', href: '/admin/courses' },
+    { key: 'totalEnrollments', title: 'Lượt đăng ký', caption: 'Tất cả trạng thái', icon: 'checkCircle', tone: 'green', href: '/admin/enrollments' },
+    { key: 'totalReviews', title: 'Đánh giá', caption: 'Tất cả trạng thái', icon: 'star', tone: 'amber', href: '/admin/reviews' },
+];
 
-    async function loadDashboard() {
-      try {
-        const response = await client.get('/api/admin/dashboard/summary');
-        if (active) {
-          setData(response.data);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.response?.data?.message || 'Không thể tải thống kê hệ thống');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadDashboard();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (loading) {
-    return <Spinner label="Đang tải thống kê..." />;
-  }
-
-  const statistics = [
-    {
-      title: 'Tổng người dùng',
-      value: data?.totalUsers ?? 0,
-      icon: 'user',
-      to: '/admin/users',
-    },
-    {
-      title: 'Tổng khóa học',
-      value: data?.totalCourses ?? 0,
-      icon: 'book',
-      to: '/admin/courses',
-    },
-    {
-      title: 'Lượt đăng ký học',
-      value: data?.totalEnrollments ?? 0,
-      icon: 'award',
-      to: '/admin/enrollments',
-    },
-    {
-      title: 'Đánh giá khóa học',
-      value: data?.totalReviews ?? 0,
-      icon: 'star',
-      to: '/admin/reviews',
-    },
-  ];
-
-  return (
-    <div className="stack">
-      <div className="admin-head">
-        <div>
-          <h1 className="admin-title">Tổng quan hệ thống</h1>
-          <p className="text-muted">Số liệu thống kê thời gian thực của toàn bộ nền tảng học trực tuyến.</p>
+function Breakdown({ title, rows }) {
+    return <section className="admin-panel">
+        <h2>{title}</h2>
+        <div className="admin-breakdown">
+            {rows.map(([label, value, tone]) => <div className="admin-breakdown-row" key={label}>
+                <span><i className={`admin-dot ${tone}`} />{label}</span>
+                <strong>{number(value)}</strong>
+            </div>)}
         </div>
-      </div>
-
-      <Alert variant="error">{error}</Alert>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        {statistics.map((item) => (
-          <Link key={item.title} to={item.to} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Card>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <div>
-                  <div className="text-muted" style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-                    {item.title}
-                  </div>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: '6px' }}>
-                    {Number(item.value).toLocaleString('vi-VN')}
-                  </div>
-                </div>
-                <div className="feature-icon" style={{ margin: 0 }}>
-                  <Icon name={item.icon} size={22} />
-                </div>
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+    </section>;
 }
 
+export default function AdminDashboardPage() {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
+
+    async function loadDashboard({ initial = false } = {}) {
+        if (!initial) setRefreshing(true);
+        setError('');
+        try {
+            const response = await client.get('/api/admin/dashboard/summary');
+            setData(response.data);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Không thể tải thống kê. Vui lòng thử lại.');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }
+
+    useEffect(() => {
+        let active = true;
+        client.get('/api/admin/dashboard/summary')
+            .then(response => {
+                if (active) setData(response.data);
+            })
+            .catch(err => {
+                if (active) setError(err.response?.data?.message || 'Không thể tải thống kê. Vui lòng thử lại.');
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+        return () => { active = false; };
+    }, []);
+
+    if (loading) {
+        return <p>Đang tải thống kê...</p>;
+    }
+
+    return (
+        <div className="container section admin-dashboard">
+            <header className="admin-dashboard-header">
+                <div><span className="page-header-eyebrow">TRUNG TÂM ĐIỀU HÀNH</span><h1>Tổng quan hệ thống</h1><p>Theo dõi tình hình vận hành và truy cập nhanh các mục quản trị.</p></div>
+                <button className="btn btn-secondary" type="button" onClick={() => loadDashboard()} disabled={refreshing}>
+                    <Icon name="trendingUp" size={16} />{refreshing ? 'Đang cập nhật…' : 'Làm mới số liệu'}
+                </button>
+            </header>
+            {error && <div className="alert alert-error" role="alert">{error}<button className="btn btn-sm btn-secondary" onClick={() => loadDashboard()}>Thử lại</button></div>}
+            <div className="admin-metric-grid">
+                {metrics.map(item => <Link className={`admin-metric-card ${item.tone}`} to={item.href} key={item.key}>
+                    <div className="admin-metric-top"><span>{item.title}</span><span className="admin-metric-icon"><Icon name={item.icon} size={19} /></span></div>
+                    <strong>{number(data?.[item.key])}</strong><small>{item.caption}</small>
+                    <span className="admin-metric-link">Xem chi tiết <Icon name="arrowRight" size={14} /></span>
+                </Link>)}
+            </div>
+            <div className="admin-dashboard-lower">
+                <Breakdown title="Tài khoản" rows={[
+                    ['Đang hoạt động', data?.activeUsers, 'green'], ['Đã khóa', data?.blockedUsers, 'red']
+                ]} />
+                <Breakdown title="Khóa học & đăng ký" rows={[
+                    ['Đã xuất bản', data?.publishedCourses, 'green'], ['Bản nháp', data?.draftCourses, 'amber'],
+                    ['Đang học', data?.activeEnrollments, 'blue'], ['Đã hoàn thành', data?.completedEnrollments, 'green']
+                ]} />
+                <Breakdown title="Đánh giá" rows={[
+                    ['Đã duyệt', data?.approvedReviews, 'green'], ['Chờ xử lý', data?.pendingReviews, 'amber'],
+                    ['Đã ẩn', data?.hiddenReviews, 'red']
+                ]} />
+                <section className="admin-panel admin-rating-panel"><h2>Điểm trung bình</h2><div className="admin-rating-value"><Icon name="star" size={24} />{Number(data?.averageRating ?? 0).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span>/ 5</span></div><p>Tính trên các đánh giá đã duyệt</p><Link to="/admin/reviews">Kiểm duyệt đánh giá <Icon name="arrowRight" size={14} /></Link></section>
+            </div>
+        </div>
+    );
+}
