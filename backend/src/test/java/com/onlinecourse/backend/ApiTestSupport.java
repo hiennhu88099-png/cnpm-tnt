@@ -1,7 +1,13 @@
 package com.onlinecourse.backend;
 
 import com.jayway.jsonpath.JsonPath;
+import com.onlinecourse.backend.repository.CartItemRepository;
+import com.onlinecourse.backend.repository.CourseOrderRepository;
+import com.onlinecourse.backend.repository.EnrollmentRepository;
+import com.onlinecourse.backend.repository.LessonProgressRepository;
+import com.onlinecourse.backend.repository.ReviewRepository;
 import com.onlinecourse.backend.repository.UserRepository;
+import com.onlinecourse.backend.repository.WishlistItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,8 +34,32 @@ public abstract class ApiTestSupport {
     @Autowired
     protected UserRepository userRepository;
 
+    @Autowired
+    protected CartItemRepository cartItemRepository;
+
+    @Autowired
+    protected WishlistItemRepository wishlistItemRepository;
+
+    @Autowired
+    protected CourseOrderRepository courseOrderRepository;
+
+    @Autowired
+    protected LessonProgressRepository lessonProgressRepository;
+
+    @Autowired
+    protected ReviewRepository reviewRepository;
+
+    @Autowired
+    protected EnrollmentRepository enrollmentRepository;
+
     @BeforeEach
     void cleanDatabase() {
+        lessonProgressRepository.deleteAll();
+        reviewRepository.deleteAll();
+        enrollmentRepository.deleteAll();
+        cartItemRepository.deleteAll();
+        wishlistItemRepository.deleteAll();
+        courseOrderRepository.deleteAll();
         userRepository.deleteAll();
     }
 

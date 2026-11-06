@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { tokenStorage } from '../api/client';
-import { shopApi } from '../api/shopApi';
+import { tokenStorage } from '../api/client.js';
+import { shopApi } from '../api/shopApi.js';
 
 const WISHLIST_KEY = 'eduhub_wishlist_v1';
 const CART_KEY = 'eduhub_cart_v1';
@@ -140,7 +140,9 @@ function writeJson(key, value) {
       // ignore
     }
   }
-  window.dispatchEvent(new Event(CHANGE_EVENT));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }
 }
 
 function normalizeCourseItem(course) {
@@ -281,7 +283,7 @@ export async function syncShopFromBackend(force = false) {
       vouchersLoaded = true;
       if (!readJson(VOUCHERS_KEY, null)) {
         writeJson(VOUCHERS_KEY, DEFAULT_VOUCHERS);
-      } else {
+      } else if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         window.dispatchEvent(new Event(CHANGE_EVENT));
       }
     }
@@ -294,7 +296,7 @@ export async function syncShopFromBackend(force = false) {
       bannersLoaded = true;
       if (!readJson(BANNERS_KEY, null)) {
         writeJson(BANNERS_KEY, DEFAULT_BANNERS);
-      } else {
+      } else if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         window.dispatchEvent(new Event(CHANGE_EVENT));
       }
     }

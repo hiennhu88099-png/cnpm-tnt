@@ -3,12 +3,12 @@ import axios from 'axios';
 const TOKEN_KEY = 'accessToken';
 
 export const tokenStorage = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  get: () => (typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null),
+  set: (token) => typeof localStorage !== 'undefined' && localStorage.setItem(TOKEN_KEY, token),
+  clear: () => typeof localStorage !== 'undefined' && localStorage.removeItem(TOKEN_KEY),
 };
 
-const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const envBaseUrl = import.meta.env?.VITE_API_BASE_URL;
 const resolvedBaseUrl =
   envBaseUrl !== undefined ? (envBaseUrl === '/' ? '' : envBaseUrl) : 'http://localhost:8080';
 
