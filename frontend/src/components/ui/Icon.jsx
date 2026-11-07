@@ -11,6 +11,8 @@ const PATHS = {
   check: <path d="M20 6 9 17l-5-5" />,
   checkCircle: <><circle cx="12" cy="12" r="10" /><path d="m8 12 3 3 5-6" /></>,
   chevronDown: <path d="m6 9 6 6 6-6" />,
+  chevronLeft: <path d="m15 18-6-6 6-6" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />,
   clock: <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>,
   code: <path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />,
   copy: <><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,

@@ -782,13 +782,61 @@ textarea.input {
   color: #059669;
 }
 
+@media (hover: none) {
+  .course-card:hover {
+    transform: none;
+  }
+
+  .course-card:hover .course-card-thumb img {
+    transform: none;
+  }
+}
+
 @media (max-width: 640px) {
   .form-row {
     grid-template-columns: 1fr;
     gap: 0;
   }
 
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  .form-actions > .btn {
+    flex: 1 1 auto;
+  }
+
+  .card-body {
+    padding: var(--space-4);
+  }
+
+  .card-header {
+    padding: var(--space-4);
+  }
+
+  .page-header {
+    margin-bottom: var(--space-5);
+  }
+
   .page-header-title {
-    font-size: var(--text-2xl);
+    font-size: clamp(1.35rem, 5vw, 1.65rem);
+  }
+
+  .page-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .empty-state {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .course-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .course-card-title {
+    min-height: 0;
   }
 }

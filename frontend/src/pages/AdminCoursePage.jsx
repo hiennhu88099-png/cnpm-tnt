@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
 import useApiQuery from '../hooks/useApiQuery';
-import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
+import { Alert, Badge, Button, Card, CustomSelect, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
 import Pagination from '../components/course/Pagination';
 import { COURSE_STATUSES, levelLabel, statusOption } from '../config/course';
 import { formatDate, formatNumber, formatPrice } from '../utils/format';
@@ -129,9 +129,8 @@ export default function AdminCoursePage() {
           </div>
 
           <label htmlFor="admin-course-category" className="sr-only">Danh mục</label>
-          <select
+          <CustomSelect
             id="admin-course-category"
-            className="input"
             value={categoryId}
             onChange={(e) => updateParams({ categoryId: e.target.value })}
           >
@@ -139,12 +138,11 @@ export default function AdminCoursePage() {
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
-          </select>
+          </CustomSelect>
 
           <label htmlFor="admin-course-status" className="sr-only">Trạng thái</label>
-          <select
+          <CustomSelect
             id="admin-course-status"
-            className="input"
             value={status}
             onChange={(e) => updateParams({ status: e.target.value })}
           >
@@ -152,7 +150,7 @@ export default function AdminCoursePage() {
             {COURSE_STATUSES.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
-          </select>
+          </CustomSelect>
         </form>
 
         {error ? (

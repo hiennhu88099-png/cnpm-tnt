@@ -147,5 +147,14 @@ public class ShopController {
         User user = currentUserService.current(jwt);
         return shopService.getUserOrders(user);
     }
+
+    @PatchMapping("/orders/{orderCode}/cancel")
+    public CourseOrderResponse cancelOrder(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable String orderCode
+    ) {
+        User user = currentUserService.current(jwt);
+        return shopService.cancelOrder(user, orderCode);
+    }
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../auth/useAuth';
 import Icon from './Icon';
 import { formatPrice } from '../../utils/format';
 import { COURSE_LEVEL_LABELS } from '../../config/site';
@@ -8,6 +9,8 @@ import { useShopStore } from '../../utils/shopStore';
 export default function CourseCard({ course, to, footer }) {
   const [imgError, setImgError] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const { isInWishlist, toggleWishlist, isInCart, addToCart } = useShopStore();
 
   const detailPath = to || `/courses/${course.id}`;
@@ -20,14 +23,18 @@ export default function CourseCard({ course, to, footer }) {
     : 0;
 
   const showThumb = Boolean(course.thumbnail) && !imgError;
-  const wishlisted = isInWishlist(course.id);
+  const wishlisted = isAuthenticated && isInWishlist(course.id);
   const inCart = isInCart(course.id);
-  const ratingValue = Number(course.averageRating || 4.8);
   const reviewCount = Number(course.reviewCount || 0);
+  const ratingValue = reviewCount > 0 && course.averageRating != null ? Number(course.averageRating) : 0;
 
   function handleToggleWish(e) {
     e.preventDefault();
     e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `${location.pathname}${location.search || ''}` } });
+      return;
+    }
     toggleWishlist(course);
   }
 
@@ -154,7 +161,10 @@ export default function CourseCard({ course, to, footer }) {
               </div>
 
               <div className="course-card-bottom-meta">
-                <div className="course-card-stars" title={`Đánh giá ${ratingValue.toFixed(1)}/5`}>
+                <div
+                  className="course-card-stars"
+                  title={reviewCount > 0 ? `Đánh giá ${ratingValue.toFixed(1)}/5 (${reviewCount} lượt)` : 'Chưa có đánh giá'}
+                >
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Icon
                       key={star}
@@ -164,7 +174,9 @@ export default function CourseCard({ course, to, footer }) {
                       style={{ color: star <= Math.round(ratingValue) ? '#facc15' : '#cbd5e1' }}
                     />
                   ))}
-                  {reviewCount > 0 && <span className="course-card-review-cnt">({reviewCount})</span>}
+                  <span className="course-card-review-cnt">
+                    {reviewCount > 0 ? `${ratingValue.toFixed(1)} (${reviewCount})` : 'Chưa có đánh giá'}
+                  </span>
                 </div>
 
                 <div className="course-card-stat-right">

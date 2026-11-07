@@ -219,12 +219,18 @@ export default function CourseDetailPage() {
 
                   <button
                     type="button"
-                    onClick={() => toggleWishlist(course)}
-                    className={`enroll-sub-btn is-wish${isInWishlist(course.id) ? ' is-active' : ''}`}
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        navigate('/login', { state: { from: `/courses/${course.id}` } });
+                        return;
+                      }
+                      toggleWishlist(course);
+                    }}
+                    className={`enroll-sub-btn is-wish${isAuthenticated && isInWishlist(course.id) ? ' is-active' : ''}`}
                     title="Lưu khóa học yêu thích"
                   >
-                    <Icon name="heart" size={16} fill={isInWishlist(course.id) ? 'currentColor' : 'none'} />
-                    <span>{isInWishlist(course.id) ? 'Đã yêu thích' : 'Yêu thích'}</span>
+                    <Icon name="heart" size={16} fill={isAuthenticated && isInWishlist(course.id) ? 'currentColor' : 'none'} />
+                    <span>{isAuthenticated && isInWishlist(course.id) ? 'Đã yêu thích' : 'Yêu thích'}</span>
                   </button>
                 </div>
               )}
@@ -379,7 +385,7 @@ export default function CourseDetailPage() {
                             controls
                             playsInline
                             preload="metadata"
-                            src={PREVIEW_SAMPLE_VIDEO}
+                            src={lesson.previewVideoUrl || PREVIEW_SAMPLE_VIDEO}
                             style={{
                               width: '100%',
                               display: 'block',

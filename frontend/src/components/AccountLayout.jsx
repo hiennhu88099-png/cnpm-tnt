@@ -24,10 +24,6 @@ export default function AccountLayout() {
                   {item.label}
                 </NavLink>
               ))}
-              <NavLink to="/my-courses" className="side-nav-link">
-                <Icon name="book" size={18} />
-                Khóa học của tôi
-              </NavLink>
               {user?.role === 'ADMIN' && (
                 <NavLink to="/admin" className="side-nav-link">
                   <Icon name="sliders" size={18} />

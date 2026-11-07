@@ -7,6 +7,18 @@ public record LearningLessonResponse(
     String videoUrl,
     Integer duration,
     Integer lessonOrder,
-    boolean completed
+    boolean completed,
+    Integer lastWatchedSecond
 ) {
+    public LearningLessonResponse(
+        Long id,
+        String title,
+        String description,
+        String videoUrl,
+        Integer duration,
+        Integer lessonOrder,
+        boolean completed
+    ) {
+        this(id, title, description, videoUrl, duration, lessonOrder, completed, 0);
+    }
 }

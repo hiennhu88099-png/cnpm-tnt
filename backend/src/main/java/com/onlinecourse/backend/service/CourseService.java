@@ -13,6 +13,7 @@ import com.onlinecourse.backend.exception.ResourceNotFoundException;
 import com.onlinecourse.backend.repository.CategoryRepository;
 import com.onlinecourse.backend.repository.CourseRepository;
 import com.onlinecourse.backend.repository.LessonRepository;
+import com.onlinecourse.backend.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +39,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final CategoryRepository categoryRepository;
     private final LessonRepository lessonRepository;
+    private final ReviewRepository reviewRepository;
 
     // ---- Public ----
 
@@ -128,9 +130,28 @@ public class CourseService {
     }
 
     private PageResponse<CourseSummaryResponse> toSummaryPage(Page<Course> page) {
-        Map<Long, Long> lessonCounts = countActiveLessons(page.getContent());
-        return PageResponse.from(page,
-                course -> CourseSummaryResponse.from(course, lessonCounts.getOrDefault(course.getId(), 0L)));
+        List<Course> courses = page.getContent();
+        Map<Long, Long> lessonCounts = countActiveLessons(courses);
+        Map<Long, Double> avgRatings = new HashMap<>();
+        Map<Long, Long> reviewCounts = new HashMap<>();
+
+        if (!courses.isEmpty()) {
+            List<Long> ids = courses.stream().map(Course::getId).toList();
+            for (Object[] row : reviewRepository.aggregateByCourseIds(ids, ReviewStatus.APPROVED)) {
+                Long cId = (Long) row[0];
+                Double avg = row[1] != null ? Math.round(((Number) row[1]).doubleValue() * 10.0) / 10.0 : null;
+                Long cnt = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+                avgRatings.put(cId, avg);
+                reviewCounts.put(cId, cnt);
+            }
+        }
+
+        return PageResponse.from(page, course -> CourseSummaryResponse.from(
+                course,
+                lessonCounts.getOrDefault(course.getId(), 0L),
+                avgRatings.get(course.getId()),
+                reviewCounts.getOrDefault(course.getId(), 0L)
+        ));
     }
 
     private Map<Long, Long> countActiveLessons(List<Course> courses) {

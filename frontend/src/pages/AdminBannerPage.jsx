@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import FormField from '../components/FormField';
-import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, Skeleton } from '../components/ui';
+import { Alert, Badge, Button, Card, CustomSelect, EmptyState, Icon, PageHeader, Skeleton } from '../components/ui';
 import { formatNumber } from '../utils/format';
 import { useShopStore } from '../utils/shopStore';
 
@@ -490,16 +490,15 @@ export default function AdminBannerPage() {
           <label htmlFor="admin-banner-status" className="sr-only">
             Trạng thái hiển thị
           </label>
-          <select
+          <CustomSelect
             id="admin-banner-status"
-            className="input"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hiển thị ({activeCount})</option>
             <option value="INACTIVE">Đang tạm ẩn ({inactiveCount})</option>
-          </select>
+          </CustomSelect>
         </div>
 
         {bannersLoading ? (

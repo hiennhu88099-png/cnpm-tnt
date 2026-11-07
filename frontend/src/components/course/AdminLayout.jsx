@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { enrollmentApi } from '../../api/enrollmentApi';
 import { reviewApi } from '../../api/reviewApi';
+import { shopApi } from '../../api/shopApi';
 import { useAuth } from '../../auth/useAuth';
-import { formatDate } from '../../utils/format';
+import { formatDate, formatPrice } from '../../utils/format';
 import { Icon } from '../ui';
 
 const ADMIN_NAV = [
@@ -56,14 +57,23 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
+  );
   const [openSubmenus, setOpenSubmenus] = useState({ '/admin/courses': true });
+
+  function closeSidebarOnMobile() {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setCollapsed(true);
+    }
+  }
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const notifStorageKey = `admin_read_notif_ids_${user?.id || 'default'}`;
   const [readIds, setReadIds] = useState(() => {
     try {
-      const saved = localStorage.getItem('admin_read_notif_ids');
+      const saved = localStorage.getItem(`admin_read_notif_ids_${user?.id || 'default'}`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -72,35 +82,60 @@ export default function AdminLayout() {
   const [quickSearch, setQuickSearch] = useState('');
   const notifRef = useRef(null);
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([
+  const fetchAdminNotifications = useCallback(async () => {
+    const [reviewsRes, enrollmentsRes, ordersRes] = await Promise.all([
       reviewApi.getAdminReviews({ status: 'PENDING', page: 0, size: 5 }).catch(() => ({ content: [] })),
       enrollmentApi.getAllEnrollments({ page: 0, size: 5 }).catch(() => ({ content: [] })),
-    ]).then(([reviewsRes, enrollmentsRes]) => {
-      if (!active) return;
-      const pendingReviews = (reviewsRes?.content ?? []).map((r) => ({
-        id: `rev-${r.id}`,
-        type: 'review',
-        title: `Đánh giá chờ duyệt (${r.rating}★)`,
-        desc: `${r.fullName || `Học viên #${r.userId}`} — ${r.courseTitle || `Khóa học #${r.courseId}`}`,
-        time: r.createdAt,
-        to: '/admin/reviews',
-      }));
-      const latestEnrollments = (enrollmentsRes?.content ?? []).map((e) => ({
-        id: `enr-${e.id}`,
-        type: 'enrollment',
-        title: `Lượt đăng ký khóa học #${e.id}`,
-        desc: `${e.title || `Khóa học #${e.courseId}`} · Học viên #${e.userId}`,
-        time: e.enrolledAt,
-        to: '/admin/enrollments',
-      }));
-      setNotifications([...pendingReviews, ...latestEnrollments].slice(0, 8));
+      shopApi.getAdminOrders().catch(() => []),
+    ]);
+
+    const pendingReviews = (reviewsRes?.content ?? []).map((r) => ({
+      id: `rev-${r.id}`,
+      type: 'review',
+      title: `Đánh giá chờ duyệt (${r.rating}★)`,
+      desc: `${r.fullName || `Học viên #${r.userId}`} — ${r.courseTitle || `Khóa học #${r.courseId}`}`,
+      time: r.createdAt,
+      to: '/admin/reviews',
+    }));
+
+    const latestOrders = (Array.isArray(ordersRes) ? ordersRes.slice(0, 5) : []).map((o) => ({
+      id: `ord-${o.id}-${o.status}`,
+      type: 'order',
+      title:
+        o.status === 'COMPLETED'
+          ? `Thanh toán thành công #${o.orderCode}`
+          : `Đơn hàng chờ thanh toán #${o.orderCode}`,
+      desc: `${o.userFullName || o.userEmail || `HV #${o.userId}`} · ${formatPrice(o.finalAmount || 0)}`,
+      time: o.createdAt,
+      to: '/admin/enrollments',
+    }));
+
+    const latestEnrollments = (enrollmentsRes?.content ?? []).map((e) => ({
+      id: `enr-${e.id}`,
+      type: 'enrollment',
+      title: `Ghi danh khóa học mới #${e.id}`,
+      desc: `${e.title || `Khóa học #${e.courseId}`} · Học viên #${e.userId}`,
+      time: e.enrolledAt,
+      to: '/admin/enrollments',
+    }));
+
+    const merged = [...latestOrders, ...pendingReviews, ...latestEnrollments].sort((a, b) => {
+      const ta = a.time ? new Date(a.time).getTime() : 0;
+      const tb = b.time ? new Date(b.time).getTime() : 0;
+      return tb - ta;
     });
+
+    setNotifications(merged.slice(0, 10));
+  }, []);
+
+  useEffect(() => {
+    const initTimer = setTimeout(fetchAdminNotifications, 0);
+    const timer = setInterval(fetchAdminNotifications, 20000);
     return () => {
-      active = false;
+      clearTimeout(initTimer);
+      clearInterval(timer);
     };
-  }, [pathname]);
+  }, [pathname, fetchAdminNotifications]);
 
   useEffect(() => {
     function handleOutsideClick(e) {
@@ -119,7 +154,7 @@ export default function AdminLayout() {
       if (prev.includes(id)) return prev;
       const next = [...prev, id];
       try {
-        localStorage.setItem('admin_read_notif_ids', JSON.stringify(next));
+        localStorage.setItem(notifStorageKey, JSON.stringify(next));
       } catch {
         // ignore storage error
       }
@@ -131,7 +166,7 @@ export default function AdminLayout() {
     const allIds = notifications.map((n) => n.id);
     setReadIds(allIds);
     try {
-      localStorage.setItem('admin_read_notif_ids', JSON.stringify(allIds));
+      localStorage.setItem(notifStorageKey, JSON.stringify(allIds));
     } catch {
       // ignore storage error
     }
@@ -212,6 +247,7 @@ export default function AdminLayout() {
                     <NavLink
                       to={item.to}
                       end={item.end}
+                      onClick={closeSidebarOnMobile}
                       className={`admin-portal-nav-btn${isParentActive ? ' is-active' : ''}`}
                       title={collapsed ? item.label : undefined}
                     >
@@ -233,6 +269,7 @@ export default function AdminLayout() {
                             key={sub.to}
                             to={sub.to}
                             end={sub.end}
+                            onClick={closeSidebarOnMobile}
                             className={`admin-portal-subnav-link${isSubActive ? ' is-active' : ''}`}
                           >
                             {isSubActive && <span className="admin-portal-subnav-dot" />}
@@ -287,6 +324,14 @@ export default function AdminLayout() {
         </div>
       </aside>
 
+      {!collapsed && (
+        <div
+          className="admin-portal-mobile-backdrop"
+          onClick={() => setCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Right Main Area */}
       <div className="admin-portal-inset">
         <header className="admin-portal-header">
@@ -319,7 +364,11 @@ export default function AdminLayout() {
               <div className="admin-portal-notif-wrap" ref={notifRef}>
                 <button
                   type="button"
-                  onClick={() => setNotifOpen((prev) => !prev)}
+                  onClick={() => {
+                    const nextOpen = !notifOpen;
+                    setNotifOpen(nextOpen);
+                    if (nextOpen) fetchAdminNotifications();
+                  }}
                   className="admin-portal-notif-btn"
                   aria-label="Thông báo quản trị"
                   title="Thông báo hệ thống"
@@ -375,7 +424,16 @@ export default function AdminLayout() {
                                   item.type === 'review' ? 'is-amber' : 'is-blue'
                                 }`}
                               >
-                                <Icon name={item.type === 'review' ? 'star' : 'award'} size={15} />
+                                <Icon
+                                  name={
+                                    item.type === 'review'
+                                      ? 'star'
+                                      : item.type === 'order'
+                                        ? 'wallet'
+                                        : 'award'
+                                  }
+                                  size={15}
+                                />
                               </span>
                               <span className="admin-portal-notif-body">
                                 <span className="admin-portal-notif-title">{item.title}</span>

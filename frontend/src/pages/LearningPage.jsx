@@ -36,9 +36,10 @@ function getYouTubeEmbedUrl(url) {
  * - Tự động đánh dấu hoàn thành bài học khi xem đạt >= 80% thời lượng
  * - Chỉnh tốc độ phát (0.75x -> 2x), nút tua -10s / +10s và phím tắt Space / Mũi tên trái phải
  */
-function LessonVideoPlayer({ lessonId, url, title, isCompleted, onAutoComplete }) {
+function LessonVideoPlayer({ lessonId, url, title, isCompleted, initialPosition = 0, onAutoComplete, onSavePosition }) {
     const videoRef = useRef(null);
     const lastSavedTimeRef = useRef(0);
+    const lastServerSyncedRef = useRef(0);
     const autoCompletedRef = useRef(false);
 
     const [videoSrc, setVideoSrc] = useState(url);
@@ -115,7 +116,9 @@ function LessonVideoPlayer({ lessonId, url, title, isCompleted, onAutoComplete }
 
         if (!lessonId) return;
         try {
-            const savedSec = Number(localStorage.getItem(getSavedPositionKey(lessonId)) || 0);
+            const localSec = Number(localStorage.getItem(getSavedPositionKey(lessonId)) || 0);
+            const dbSec = Number(initialPosition || 0);
+            const savedSec = Math.max(localSec, dbSec);
             if (savedSec > 3 && Number.isFinite(video.duration) && savedSec < video.duration - 5) {
                 video.currentTime = savedSec;
                 setResumedFrom(savedSec);
@@ -125,12 +128,17 @@ function LessonVideoPlayer({ lessonId, url, title, isCompleted, onAutoComplete }
         }
     };
 
-    const saveCurrentPosition = (currentTime) => {
+    const saveCurrentPosition = (currentTime, forceServerSync = true) => {
         if (!lessonId || !Number.isFinite(currentTime)) return;
+        const floored = Math.floor(currentTime);
         try {
-            localStorage.setItem(getSavedPositionKey(lessonId), String(Math.floor(currentTime)));
+            localStorage.setItem(getSavedPositionKey(lessonId), String(floored));
         } catch {
             // ignore
+        }
+        if (onSavePosition && (forceServerSync || Math.abs(floored - lastServerSyncedRef.current) >= 10)) {
+            lastServerSyncedRef.current = floored;
+            onSavePosition(floored);
         }
     };
 
@@ -142,10 +150,10 @@ function LessonVideoPlayer({ lessonId, url, title, isCompleted, onAutoComplete }
         const pct = Math.min(100, Math.round((current / video.duration) * 100));
         setWatchedPercent(pct);
 
-        // Định kỳ lưu vị trí mỗi 5 giây
+        // Định kỳ lưu vị trí mỗi 5 giây (localStorage) và 10 giây (Database)
         if (Math.abs(current - lastSavedTimeRef.current) >= 5) {
             lastSavedTimeRef.current = current;
-            saveCurrentPosition(current);
+            saveCurrentPosition(current, false);
         }
 
         // Tự động hoàn thành bài học khi xem đạt >= 80% thời lượng
@@ -487,6 +495,18 @@ export default function LearningPage() {
         }
     }, [saving, selectedLesson]);
 
+    const handleSaveWatchPosition = useCallback((lessonId, second) => {
+        if (!lessonId) return;
+        learningApi.saveWatchPosition(lessonId, second).catch(() => {});
+        setLessons(oldLessons =>
+            oldLessons.map(item =>
+                item.id === lessonId
+                    ? { ...item, lastWatchedSecond: second }
+                    : item
+            )
+        );
+    }, []);
+
     if (loading) {
         return <LearningPageSkeleton />;
     }
@@ -556,18 +576,11 @@ export default function LearningPage() {
                 </div>
             )}
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1.8fr) minmax(280px, 1fr)',
-                    gap: '24px',
-                    alignItems: 'start'
-                }}
-            >
-                <main>
+            <div className="learning-room-grid">
+                <main style={{ minWidth: 0 }}>
                     {selectedLesson ? (
                         <>
-                            <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>
+                            <h2 style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.25rem)', marginBottom: '16px', lineHeight: 1.4 }}>
                                 {selectedLesson.title}
                             </h2>
 
@@ -577,22 +590,13 @@ export default function LearningPage() {
                                 url={selectedLesson.videoUrl}
                                 title={selectedLesson.title}
                                 isCompleted={selectedLesson.completed}
+                                initialPosition={selectedLesson.lastWatchedSecond ?? 0}
                                 onAutoComplete={handleComplete}
+                                onSavePosition={(sec) => handleSaveWatchPosition(selectedLesson.id, sec)}
                             />
 
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
-                                    gap: '12px',
-                                    marginTop: '20px',
-                                    paddingBottom: '20px',
-                                    borderBottom: '1px solid #e2e8f0'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div className="learning-lesson-actions">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                                     <span style={{ color: '#64748b', fontSize: '14px' }}>
                                         Thời lượng: ~{selectedLesson.duration ?? 15} phút
                                     </span>
@@ -610,6 +614,7 @@ export default function LearningPage() {
 
                                 <button
                                     type="button"
+                                    className="learning-complete-btn"
                                     onClick={handleComplete}
                                     disabled={saving || selectedLesson.completed}
                                     style={{
@@ -645,16 +650,7 @@ export default function LearningPage() {
                     )}
                 </main>
 
-                <aside
-                    style={{
-                        background: '#ffffff',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        maxHeight: '80vh',
-                        overflowY: 'auto'
-                    }}
-                >
+                <aside className="learning-playlist-card">
                     <h3 style={{ fontSize: '16px', marginBottom: '14px' }}>Danh sách bài học</h3>
 
                     {lessons.map((lesson, index) => {

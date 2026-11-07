@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { courseApi } from '../api/courseApi';
 import useApiQuery from '../hooks/useApiQuery';
-import { Alert, Button, CourseCard, CourseGridSkeleton, EmptyState, Icon } from '../components/ui';
+import { Alert, Button, CourseCard, CourseGridSkeleton, CustomSelect, EmptyState, Icon } from '../components/ui';
 import Pagination from '../components/course/Pagination';
 import { COURSE_SORTS } from '../config/course';
 import { formatNumber } from '../utils/format';
@@ -91,12 +91,10 @@ export default function CourseListPage() {
         <div className="catalog-hero-controls">
           <div className="catalog-pill-select-wrap">
             <label htmlFor="course-category" className="sr-only">Danh mục</label>
-            <span className="catalog-pill-icon" aria-hidden="true">
-              <Icon name="sliders" size={16} />
-            </span>
-            <select
+            <CustomSelect
               id="course-category"
-              className="catalog-pill-select has-left-icon"
+              variant="pill"
+              leftIcon="sliders"
               value={categoryId}
               onChange={(e) => updateParams({ categoryId: e.target.value })}
             >
@@ -104,27 +102,21 @@ export default function CourseListPage() {
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
-            </select>
-            <span className="catalog-pill-chevron" aria-hidden="true">
-              <Icon name="chevronDown" size={16} />
-            </span>
+            </CustomSelect>
           </div>
 
           <div className="catalog-pill-select-wrap is-sort">
             <label htmlFor="course-sort" className="sr-only">Sắp xếp</label>
-            <select
+            <CustomSelect
               id="course-sort"
-              className="catalog-pill-select"
+              variant="pill"
               value={sort}
               onChange={(e) => updateParams({ sort: e.target.value })}
             >
               {COURSE_SORTS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
-            </select>
-            <span className="catalog-pill-chevron" aria-hidden="true">
-              <Icon name="chevronDown" size={16} />
-            </span>
+            </CustomSelect>
           </div>
         </div>
       </form>

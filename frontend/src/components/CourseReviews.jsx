@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { reviewApi } from '../api/reviewApi';
 import { useAuth } from '../auth/useAuth';
 import useApiQuery from '../hooks/useApiQuery';
-import { Alert, Avatar, Button, Card, EmptyState, StarRating } from './ui';
+import { Alert, Avatar, Button, Card, CustomSelect, EmptyState, StarRating } from './ui';
 import { formatDate } from '../utils/format';
 
 export default function CourseReviews({ courseId, isEnrolled = false }) {
@@ -98,19 +98,18 @@ export default function CourseReviews({ courseId, isEnrolled = false }) {
               <label className="field-label" htmlFor="review-rating">
                 Mức độ hài lòng
               </label>
-              <select
+              <CustomSelect
                 id="review-rating"
-                className="input"
                 value={rating}
                 onChange={(e) => setRating(Number(e.target.value))}
-                style={{ maxWidth: '220px' }}
+                style={{ maxWidth: '280px' }}
               >
                 <option value={5}>★★★★★ — 5 sao (Rất tuyệt vời)</option>
                 <option value={4}>★★★★☆ — 4 sao (Tốt)</option>
                 <option value={3}>★★★☆☆ — 3 sao (Khá)</option>
                 <option value={2}>★★☆☆☆ — 2 sao (Trung bình)</option>
                 <option value={1}>★☆☆☆☆ — 1 sao (Cần cải thiện)</option>
-              </select>
+              </CustomSelect>
             </div>
 
             <div className="field">

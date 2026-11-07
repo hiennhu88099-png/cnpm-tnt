@@ -36,6 +36,10 @@ public class LessonProgress {
     @Column(nullable = false)
     private boolean completed = false;
 
+    @Builder.Default
+    @Column(name = "last_watched_second", nullable = false)
+    private Integer lastWatchedSecond = 0;
+
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 }

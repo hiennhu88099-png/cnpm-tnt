@@ -36,6 +36,8 @@ export const shopApi = {
   checkoutOrder: (data) => client.post('/api/orders/checkout', data).then((r) => r.data),
   getOrderStatus: (orderCode) =>
     client.get(`/api/orders/${encodeURIComponent(orderCode)}/status`).then((r) => r.data),
+  cancelOrder: (orderCode) =>
+    client.patch(`/api/orders/${encodeURIComponent(orderCode)}/cancel`).then((r) => r.data),
   getMyOrders: () => client.get('/api/orders/my').then((r) => r.data),
   getAdminOrders: () => client.get('/api/admin/orders').then((r) => r.data),
 };

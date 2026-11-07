@@ -156,7 +156,7 @@ export default function Navbar() {
               onClick={closeMenus}
             >
               <Icon name="heart" size={20} />
-              {wishlist.length > 0 && (
+              {isAuthenticated && wishlist.length > 0 && (
                 <span className="header-icon-badge is-pink">{wishlist.length}</span>
               )}
             </Link>
@@ -242,23 +242,71 @@ export default function Navbar() {
         {/* Menu xổ xuống trên Mobile */}
         <nav className={`main-nav${mobileNavOpen ? ' is-open' : ''}`} aria-label="Menu di động">
           <form className="mobile-search-form" onSubmit={handleHeaderSearch}>
-            <input
-              type="text"
-              className="input"
-              placeholder="Tìm kiếm khóa học..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
+            <div className="mobile-search-box">
+              <Icon name="search" size={16} />
+              <input
+                type="text"
+                className="mobile-search-input"
+                placeholder="Tìm kiếm khóa học..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+              <button type="submit" className="mobile-search-submit">
+                Tìm
+              </button>
+            </div>
           </form>
-          {navLinks.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end} className="main-nav-link" onClick={closeMenus}>
-              {link.label}
+
+          <div className="mobile-nav-group">
+            {navLinks.map((link) => (
+              <NavLink key={link.to} to={link.to} end={link.end} className="main-nav-link" onClick={closeMenus}>
+                <span>{link.label}</span>
+              </NavLink>
+            ))}
+            <NavLink to="/wishlist" className="main-nav-link" onClick={closeMenus}>
+              <span>Khóa học yêu thích</span>
+              {wishlist.length > 0 && <span className="mobile-nav-badge">{wishlist.length}</span>}
             </NavLink>
-          ))}
-          {!isAuthenticated && (
-            <Link to="/register" className="main-nav-link" onClick={closeMenus}>
-              Đăng ký tài khoản
-            </Link>
+            <NavLink to="/cart" className="main-nav-link" onClick={closeMenus}>
+              <span>Giỏ hàng</span>
+              {cart.length > 0 && <span className="mobile-nav-badge">{cart.length}</span>}
+            </NavLink>
+          </div>
+
+          {isAuthenticated ? (
+            <div className="mobile-nav-account">
+              { ACCOUNT_NAV.map((item) => (
+                <NavLink key={item.to} to={item.to} className="main-nav-link" onClick={closeMenus}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon name={item.icon} size={16} />
+                    {item.label}
+                  </span>
+                </NavLink>
+              ))}
+              {user.role === 'ADMIN' && (
+                <NavLink to="/admin" className="main-nav-link" onClick={closeMenus}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon name="chart" size={16} />
+                    Trang quản trị
+                  </span>
+                </NavLink>
+              )}
+              <button type="button" className="main-nav-link is-danger" onClick={handleLogout}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon name="logout" size={16} />
+                  Đăng xuất
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div className="mobile-nav-auth-btns">
+              <Link to="/login" className="btn btn-primary btn-sm" onClick={closeMenus}>
+                Đăng nhập
+              </Link>
+              <Link to="/register" className="btn btn-secondary btn-sm" onClick={closeMenus}>
+                Đăng ký tài khoản
+              </Link>
+            </div>
           )}
         </nav>
       </div>

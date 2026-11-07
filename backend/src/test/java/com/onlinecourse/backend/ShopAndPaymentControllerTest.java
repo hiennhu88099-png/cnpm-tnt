@@ -6,6 +6,8 @@ import com.onlinecourse.backend.entity.CategoryStatus;
 import com.onlinecourse.backend.entity.Course;
 import com.onlinecourse.backend.entity.CourseLevel;
 import com.onlinecourse.backend.entity.CourseStatus;
+import com.onlinecourse.backend.entity.Lesson;
+import com.onlinecourse.backend.entity.LessonStatus;
 import com.onlinecourse.backend.repository.BannerRepository;
 import com.onlinecourse.backend.repository.VoucherRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -211,7 +213,99 @@ class ShopAndPaymentControllerTest extends CourseApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
 
+        // 5. Student order history (/api/orders/my) lists the completed order
+        getAs(studentToken, "/api/orders/my")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].orderCode").value("ORD998877"))
+                .andExpect(jsonPath("$[0].status").value("COMPLETED"));
+
         assertEquals(1, enrollmentRepository.count());
+
+        // 6. Attempting to cancel an already COMPLETED order returns 400 Bad Request
+        mockMvc.perform(patch("/api/orders/ORD998877/cancel")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(studentToken)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void pendingOrderCancellation_andReopenOnRetryQr_succeeds() throws Exception {
+        String studentToken = userToken();
+        Course course = createPublishedCourse("TypeScript Advanced Patterns", BigDecimal.valueOf(280000));
+
+        // 1. Create PENDING order
+        postAs(studentToken, "/api/orders/pending", """
+                {
+                  "orderCode": "ORDCANCEL01",
+                  "courseIds": [%d],
+                  "paymentMethod": "SEPAY",
+                  "subtotalAmount": 280000,
+                  "discountAmount": 0,
+                  "finalAmount": 280000
+                }
+                """.formatted(course.getId()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+
+        // 2. Cancel order (either via Cancel button or 15-min expiration)
+        mockMvc.perform(patch("/api/orders/ORDCANCEL01/cancel")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(studentToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderCode").value("ORDCANCEL01"))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        // 3. Reopen QR ("Tạo lại mã QR mới") transitions CANCELLED -> PENDING
+        postAs(studentToken, "/api/orders/pending", """
+                {
+                  "orderCode": "ORDCANCEL01",
+                  "courseIds": [%d],
+                  "paymentMethod": "SEPAY",
+                  "subtotalAmount": 280000,
+                  "discountAmount": 0,
+                  "finalAmount": 280000
+                }
+                """.formatted(course.getId()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderCode").value("ORDCANCEL01"))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void healthEndpoint_andLessonWatchPositionPersistence_succeeds() throws Exception {
+        // 1. Public health endpoint returns UP + database status
+        getPublic("/api/health")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.database").value("UP"));
+
+        // 2. Enrolled student saves watch position (second 142) and retrieves it on reload
+        String studentToken = userToken();
+        Course course = createPublishedCourse("Docker & Kubernetes Production", BigDecimal.ZERO);
+
+        Lesson lesson = new Lesson();
+        lesson.setCourse(course);
+        lesson.setTitle("Bài 1: Tổng quan Container");
+        lesson.setVideoUrl("https://vjs.zencdn.net/v/oceans.mp4");
+        lesson.setDuration(15);
+        lesson.setLessonOrder(1);
+        lesson.setStatus(LessonStatus.ACTIVE);
+        lesson = lessonRepository.save(lesson);
+
+        postAs(studentToken, "/api/enrollments", """
+                {"courseId": %d}
+                """.formatted(course.getId()))
+                .andExpect(status().isCreated());
+
+        putAs(studentToken, "/api/lessons/" + lesson.getId() + "/watch-position", """
+                {"lastWatchedSecond": 142}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastWatchedSecond").value(142));
+
+        getAs(studentToken, "/api/learning/courses/" + course.getId() + "/lessons")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].lastWatchedSecond").value(142));
     }
 
     @Test

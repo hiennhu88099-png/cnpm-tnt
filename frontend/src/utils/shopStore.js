@@ -4,6 +4,7 @@ import { shopApi } from '../api/shopApi.js';
 
 const WISHLIST_KEY = 'eduhub_wishlist_v1';
 const CART_KEY = 'eduhub_cart_v1';
+const CART_OWNER_KEY = 'eduhub_cart_owner_v1';
 const VOUCHERS_KEY = 'eduhub_vouchers_v2';
 const SAVED_VOUCHERS_KEY = 'eduhub_saved_vouchers_v1';
 const BANNERS_KEY = 'eduhub_banners_v2';
@@ -15,101 +16,6 @@ try {
 } catch {
   // ignore
 }
-
-const DEFAULT_BANNERS = [
-  {
-    id: 1,
-    title: 'Siêu Hội Học Tập EduHub 2026 - Ưu đãi đến 50%',
-    imageUrl: '/banners/hero-main-1.svg',
-    link: '/courses',
-    type: 'HomeMain',
-    position: 1,
-    active: true,
-  },
-  {
-    id: 2,
-    title: 'Combo Lập Trình & AI - Tiết kiệm đến 150.000đ',
-    imageUrl: '/banners/promo-left.svg',
-    link: '/courses',
-    type: 'Promo',
-    position: 2,
-    active: true,
-  },
-  {
-    id: 3,
-    title: 'Kho Khóa Học Miễn Phí 0đ - Học thử không giới hạn',
-    imageUrl: '/banners/side-right-1.svg',
-    link: '/courses',
-    type: 'Side',
-    position: 3,
-    active: true,
-  },
-  {
-    id: 4,
-    title: 'Ưu đãi 50% Khóa học Fullstack & AI',
-    imageUrl: '/banners/float-left.svg',
-    link: '/courses',
-    type: 'FloatLeft',
-    position: 4,
-    active: true,
-  },
-  {
-    id: 5,
-    title: 'Nhập mã EDUHUB50 giảm ngay 50.000đ',
-    imageUrl: '/banners/float-right.svg',
-    link: '/cart',
-    type: 'FloatRight',
-    position: 5,
-    active: true,
-  },
-];
-
-const DEFAULT_VOUCHERS = [
-  {
-    id: 1,
-    code: 'NEWSTUDENT',
-    type: 'percent',
-    value: 20,
-    maxDiscount: 100000,
-    minOrderAmount: 0,
-    description: 'Ưu đãi 20% (tối đa 100K) dành cho học viên đăng ký khóa học mới',
-    endDate: '2026-12-31',
-    active: true,
-  },
-  {
-    id: 2,
-    code: 'EDUHUB50',
-    type: 'fixed',
-    value: 50000,
-    maxDiscount: 50000,
-    minOrderAmount: 150000,
-    description: 'Giảm trực tiếp 50.000đ cho đơn đăng ký khóa học từ 150.000đ',
-    endDate: '2026-12-31',
-    active: true,
-  },
-  {
-    id: 3,
-    code: 'FULLSTACK100',
-    type: 'fixed',
-    value: 100000,
-    maxDiscount: 100000,
-    minOrderAmount: 400000,
-    description: 'Giảm 100.000đ cho các khóa học chuyên sâu từ 400.000đ',
-    endDate: '2026-12-31',
-    active: true,
-  },
-  {
-    id: 4,
-    code: 'COMBO150K',
-    type: 'fixed',
-    value: 150000,
-    maxDiscount: 150000,
-    minOrderAmount: 600000,
-    description: 'Giảm 150.000đ khi mua combo nhiều khóa học từ 600.000đ',
-    endDate: '2026-12-31',
-    active: true,
-  },
-];
 
 const memoryCache = {};
 
@@ -281,9 +187,7 @@ export async function syncShopFromBackend(force = false) {
       writeJson(VOUCHERS_KEY, vouchersRes.map(normalizeVoucherItem));
     } else if (!vouchersLoaded) {
       vouchersLoaded = true;
-      if (!readJson(VOUCHERS_KEY, null)) {
-        writeJson(VOUCHERS_KEY, DEFAULT_VOUCHERS);
-      } else if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         window.dispatchEvent(new Event(CHANGE_EVENT));
       }
     }
@@ -294,14 +198,20 @@ export async function syncShopFromBackend(force = false) {
       optimizeOversizedBannersInCache(normalized);
     } else if (!bannersLoaded) {
       bannersLoaded = true;
-      if (!readJson(BANNERS_KEY, null)) {
-        writeJson(BANNERS_KEY, DEFAULT_BANNERS);
-      } else if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
         window.dispatchEvent(new Event(CHANGE_EVENT));
       }
     }
 
     if (token) {
+      const isGuestCart = readJson(CART_OWNER_KEY, '') === 'guest';
+      const guestCartItems = isGuestCart ? getCart() : [];
+      if (guestCartItems.length > 0) {
+        await Promise.all(
+          guestCartItems.map((item) => shopApi.addToCart(Number(item.id)).catch(() => null))
+        );
+      }
+
       const [wishRes, cartRes] = await Promise.all([
         shopApi.getWishlist().catch(() => null),
         shopApi.getCart().catch(() => null),
@@ -311,7 +221,13 @@ export async function syncShopFromBackend(force = false) {
       }
       if (Array.isArray(cartRes)) {
         writeJson(CART_KEY, cartRes.map(normalizeCourseItem));
+        writeJson(CART_OWNER_KEY, 'user');
       }
+    } else if (readJson(CART_OWNER_KEY, '') === 'user') {
+      writeJson(WISHLIST_KEY, []);
+      writeJson(CART_KEY, []);
+      writeJson(SAVED_VOUCHERS_KEY, []);
+      writeJson(CART_OWNER_KEY, '');
     }
   } finally {
     syncInFlight = false;
@@ -373,7 +289,10 @@ export function addToCart(course) {
   writeJson(CART_KEY, next);
 
   if (tokenStorage.get()) {
+    writeJson(CART_OWNER_KEY, 'user');
     shopApi.addToCart(id).catch(() => {});
+  } else {
+    writeJson(CART_OWNER_KEY, 'guest');
   }
   return true;
 }
@@ -409,11 +328,8 @@ export function clearCart() {
 
 // --- VOUCHERS ---
 export function getAllVouchers() {
-  const saved = readJson(VOUCHERS_KEY, null);
-  if (!Array.isArray(saved)) {
-    return vouchersLoaded ? DEFAULT_VOUCHERS : [];
-  }
-  return saved;
+  const saved = readJson(VOUCHERS_KEY, []);
+  return Array.isArray(saved) ? saved : [];
 }
 
 export function getActiveVouchers() {
@@ -517,9 +433,9 @@ export function saveUserVoucher(code) {
 
 // --- BANNERS ---
 export function getAllBanners() {
-  const saved = readJson(BANNERS_KEY, null);
+  const saved = readJson(BANNERS_KEY, []);
   if (!Array.isArray(saved)) {
-    return bannersLoaded ? DEFAULT_BANNERS : [];
+    return [];
   }
   return [...saved].sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
 }
@@ -606,6 +522,14 @@ export async function deleteBanner(id) {
       // ignore
     }
   }
+}
+
+export function clearUserShopSession() {
+  lastSyncKey = null;
+  writeJson(WISHLIST_KEY, []);
+  writeJson(CART_KEY, []);
+  writeJson(SAVED_VOUCHERS_KEY, []);
+  writeJson(CART_OWNER_KEY, '');
 }
 
 // --- REACTIVE HOOK ---

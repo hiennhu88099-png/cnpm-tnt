@@ -4,12 +4,17 @@ SET CHARACTER SET utf8mb4;
 -- Tắt kiểm tra khóa ngoại để xóa và nạp lại dữ liệu an toàn
 SET FOREIGN_KEY_CHECKS = 0;
 
+TRUNCATE TABLE cart_items;
+TRUNCATE TABLE wishlist_items;
+TRUNCATE TABLE course_orders;
 TRUNCATE TABLE reviews;
 TRUNCATE TABLE lesson_progress;
 TRUNCATE TABLE enrollments;
 TRUNCATE TABLE lessons;
 TRUNCATE TABLE courses;
 TRUNCATE TABLE categories;
+TRUNCATE TABLE vouchers;
+TRUNCATE TABLE banners;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -215,3 +220,77 @@ INSERT INTO lessons (id, course_id, title, description, video_url, duration, les
 (34, 8, 'Bài 4: Đo lường và Tối ưu sản phẩm với các chỉ số Product Analytics', 
  'Theo dõi MAU/DAU, Retention Rate, Churn Rate và xây dựng phễu chuyển đổi (Conversion Funnel) để cải tiến sản phẩm.', 
  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', 40, 4, 'ACTIVE', NOW(), NOW());
+
+-- ==============================================================================
+-- 4. MÃ GIẢM GIÁ (VOUCHERS)
+-- ==============================================================================
+INSERT INTO vouchers (id, code, type, value, max_discount, min_order_amount, description, end_date, active, created_at) VALUES
+(1, 'NEWSTUDENT', 'percent', 20, 100000, 0, 'Ưu đãi 20% (tối đa 100K) dành cho học viên đăng ký khóa học mới', '2026-12-31', 1, NOW()),
+(2, 'EDUHUB50', 'fixed', 50000, 50000, 150000, 'Giảm trực tiếp 50.000đ cho đơn đăng ký khóa học từ 150.000đ', '2026-12-31', 1, NOW()),
+(3, 'FULLSTACK100', 'fixed', 100000, 100000, 400000, 'Giảm 100.000đ cho các khóa học chuyên sâu từ 400.000đ', '2026-12-31', 1, NOW()),
+(4, 'COMBO150K', 'fixed', 150000, 150000, 600000, 'Giảm 150.000đ khi mua combo nhiều khóa học từ 600.000đ', '2026-12-31', 1, NOW());
+
+-- ==============================================================================
+-- 5. BANNER TRÌNH CHIẾU & KHUYẾN MÃI (BANNERS)
+-- ==============================================================================
+INSERT INTO banners (id, title, image_url, link, type, position, active, created_at) VALUES
+(1, 'Siêu Hội Học Tập EduHub 2026 - Ưu đãi đến 50%', '/banners/hero-main-1.svg', '/courses', 'HomeMain', 1, 1, NOW()),
+(2, 'Combo Lập Trình & AI - Tiết kiệm đến 150.000đ', '/banners/promo-left.svg', '/courses', 'Promo', 2, 1, NOW()),
+(3, 'Kho Khóa Học Miễn Phí 0đ - Học thử không giới hạn', '/banners/side-right-1.svg', '/courses', 'Side', 3, 1, NOW()),
+(4, 'Ưu đãi 50% Khóa học Fullstack & AI', '/banners/float-left.svg', '/courses', 'FloatLeft', 4, 1, NOW()),
+(5, 'Nhập mã EDUHUB50 giảm ngay 50.000đ', '/banners/float-right.svg', '/cart', 'FloatRight', 5, 1, NOW());
+
+-- ==============================================================================
+-- 6. TÀI KHOẢN NGƯỜI DÙNG MẪU (USERS - Mật khẩu: 123456)
+-- ==============================================================================
+INSERT IGNORE INTO users (full_name, email, password, phone, role, status, token_version, created_at, updated_at) VALUES
+('Quản Trị Viên EduHub', 'admin@eduhub.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901234567', 'ADMIN', 'ACTIVE', 0, NOW(), NOW()),
+('Nguyễn Minh Học Viên', 'hocvien@eduhub.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0987654321', 'USER', 'ACTIVE', 0, NOW(), NOW());
+
+-- Lấy ID của học viên mẫu để gắn dữ liệu Ghi danh, Tiến độ, Đánh giá, Đơn hàng, Yêu thích & Giỏ hàng
+SET @student_id = (SELECT id FROM users WHERE email = 'hocvien@eduhub.vn' LIMIT 1);
+
+-- ==============================================================================
+-- 7. GHI DANH & TIẾN ĐỘ BÀI HỌC (ENROLLMENTS & LESSON_PROGRESS)
+-- ==============================================================================
+INSERT INTO enrollments (id, user_id, course_id, enrolled_at, status) VALUES
+(1, @student_id, 1, DATE_SUB(NOW(), INTERVAL 5 DAY), 'COMPLETED'),
+(2, @student_id, 2, DATE_SUB(NOW(), INTERVAL 2 DAY), 'ACTIVE');
+
+-- Khóa học 1: Hoàn thành 100% (5/5 bài học)
+INSERT INTO lesson_progress (enrollment_id, lesson_id, completed, last_watched_second, completed_at) VALUES
+(1, 1, 1, 180, DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(1, 2, 1, 210, DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(1, 3, 1, 240, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(1, 4, 1, 200, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(1, 5, 1, 300, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+-- Khóa học 2: Bài 1 đã xong, Bài 2 đang xem dở tại giây thứ 95 (01:35)
+(2, 6, 1, 240, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(2, 7, 0, 95, NULL);
+
+-- ==============================================================================
+-- 8. ĐÁNH GIÁ KHÓA HỌC (REVIEWS - Có cả APPROVED và PENDING chờ duyệt)
+-- ==============================================================================
+INSERT INTO reviews (user_id, course_id, rating, comment, status, created_at) VALUES
+(@student_id, 1, 5, 'Nội dung khóa học rất thực tế, bài giảng rõ ràng từ cơ bản đến nâng cao. Rất đáng tiền!', 'APPROVED', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(@student_id, 2, 5, 'Trình phát video thông minh tự lưu lại đúng giây đang xem dở, trải nghiệm học tập rất mượt!', 'PENDING', NOW());
+
+-- ==============================================================================
+-- 9. ĐƠN HÀNG & LỊCH SỬ GIAO DỊCH (COURSE_ORDERS - Có đủ COMPLETED, PENDING & CANCELLED)
+-- ==============================================================================
+INSERT INTO course_orders (order_code, user_id, course_ids_csv, course_titles, subtotal_amount, discount_amount, final_amount, voucher_code, payment_method, status, created_at) VALUES
+('ORD20268801', @student_id, '1,2', 'Lập trình Fullstack với Spring Boot và React 19 + React 19 Thực Chiến: Làm Chủ Hooks & Server Components', 898000, 50000, 848000, 'EDUHUB50', 'SEPAY', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+('ORD20268802', @student_id, '4', 'Thiết Kế UI/UX Chuyên Nghiệp với Figma 2026', 299000, 0, 299000, NULL, 'SEPAY', 'PENDING', NOW()),
+('ORD20268803', @student_id, '5', 'Docker & Kubernetes Production: Triển Khai Hệ Thống Cloud-Native', 499000, 0, 499000, NULL, 'SEPAY', 'CANCELLED', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+-- ==============================================================================
+-- 10. KHÓA HỌC YÊU THÍCH & GIỎ HÀNG (WISHLIST_ITEMS & CART_ITEMS)
+-- ==============================================================================
+INSERT INTO wishlist_items (user_id, course_id, created_at) VALUES
+(@student_id, 4, NOW()),
+(@student_id, 5, NOW());
+
+INSERT INTO cart_items (user_id, course_id, created_at) VALUES
+(@student_id, 4, NOW()),
+(@student_id, 6, NOW());
+

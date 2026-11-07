@@ -12,6 +12,7 @@ import {
   Badge,
   Button,
   Card,
+  CustomSelect,
   EmptyState,
   Icon,
   PageHeader,
@@ -387,9 +388,8 @@ export default function AdminUserPage() {
           <label htmlFor="admin-user-role" className="sr-only">
             Vai trò
           </label>
-          <select
+          <CustomSelect
             id="admin-user-role"
-            className="input"
             value={role}
             onChange={(e) => {
               setRole(e.target.value);
@@ -399,14 +399,13 @@ export default function AdminUserPage() {
             <option value="">Tất cả vai trò</option>
             <option value="USER">Học viên</option>
             <option value="ADMIN">Quản trị viên</option>
-          </select>
+          </CustomSelect>
 
           <label htmlFor="admin-user-status" className="sr-only">
             Trạng thái
           </label>
-          <select
+          <CustomSelect
             id="admin-user-status"
-            className="input"
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -416,7 +415,7 @@ export default function AdminUserPage() {
             <option value="">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
             <option value="BLOCKED">Đã khóa</option>
-          </select>
+          </CustomSelect>
         </form>
 
         {error ? (
@@ -763,28 +762,26 @@ export default function AdminUserPage() {
 
                 <div>
                   <label className="field-label">Vai trò hệ thống *</label>
-                  <select
-                    className="input"
+                  <CustomSelect
                     value={formData.role}
                     disabled={formData.id === currentUser?.id}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   >
                     <option value="USER">Học viên (USER)</option>
                     <option value="ADMIN">Quản trị viên (ADMIN)</option>
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>
                   <label className="field-label">Trạng thái tài khoản *</label>
-                  <select
-                    className="input"
+                  <CustomSelect
                     value={formData.status}
                     disabled={formData.id === currentUser?.id}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   >
                     <option value="ACTIVE">Đang hoạt động (ACTIVE)</option>
                     <option value="BLOCKED">Đã khóa (BLOCKED)</option>
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 {!formData.id ? (

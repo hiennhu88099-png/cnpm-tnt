@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -41,6 +42,32 @@ public class LearningController {
         return learningService.complete(
             userService.current(jwt),
             lessonId
+        );
+    }
+
+    // Luu vi tri giay dang xem video xuong DB (Resume Playback)
+    @PutMapping("/api/lessons/{lessonId}/watch-position")
+    public Map<String, Object> saveWatchPosition(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long lessonId,
+            @RequestBody Map<String, Object> payload) {
+
+        int lastWatchedSecond = 0;
+        Object raw = payload != null ? payload.get("lastWatchedSecond") : null;
+        if (raw instanceof Number num) {
+            lastWatchedSecond = num.intValue();
+        } else if (raw != null) {
+            try {
+                lastWatchedSecond = Integer.parseInt(raw.toString());
+            } catch (NumberFormatException ignored) {
+                lastWatchedSecond = 0;
+            }
+        }
+
+        return learningService.saveWatchPosition(
+            userService.current(jwt),
+            lessonId,
+            lastWatchedSecond
         );
     }
 

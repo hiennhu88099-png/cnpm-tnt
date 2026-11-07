@@ -5,7 +5,7 @@ import useApiQuery from '../hooks/useApiQuery';
 import FormField from '../components/FormField';
 import { Alert, Badge, Button, Card, EmptyState, Icon, PageHeader, PageLoading } from '../components/ui';
 import { CATEGORY_STATUSES, statusOption } from '../config/course';
-import { formatDate } from '../utils/format';
+import { formatDate, formatNumber } from '../utils/format';
 
 const EMPTY_FORM = { name: '', description: '', image: '', status: 'ACTIVE' };
 const NO_ERROR = { message: '', fieldErrors: {} };
@@ -17,7 +17,6 @@ const toForm = (category) => ({
   status: category.status,
 });
 
-// Chuỗi rỗng -> null để backend không phải validate URL rỗng
 const toPayload = (form) => ({
   name: form.name.trim(),
   description: form.description.trim() || null,
@@ -26,12 +25,12 @@ const toPayload = (form) => ({
 });
 
 export default function AdminCategoryPage() {
-  // courseApi.getAdminCategories là hàm cố định của module nên chỉ gọi lại khi reload()
   const { data, error: loadError, loading, reload } = useApiQuery(courseApi.getAdminCategories);
   const categories = data ?? [];
 
-  const [editing, setEditing] = useState(null); // null = đang tạo mới
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [error, setError] = useState(NO_ERROR);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState({ type: 'success', text: '' });
@@ -89,7 +88,6 @@ export default function AdminCategoryPage() {
     }
   };
 
-  // Xóa mềm: danh mục chuyển sang INACTIVE, khóa học bên trong sẽ không còn hiện ở trang công khai
   const handleDeactivate = async (category) => {
     const ok = window.confirm(
       `Ngừng sử dụng danh mục “${category.name}”?\nCác khóa học thuộc danh mục này sẽ bị ẩn khỏi trang công khai.`,
@@ -107,17 +105,47 @@ export default function AdminCategoryPage() {
 
   if (loading && !data) return <PageLoading text="Đang tải danh mục..." />;
 
+  const activeCount = categories.filter((c) => c.status === 'ACTIVE').length;
+  const inactiveCount = categories.length - activeCount;
+  const filteredCategories =
+    statusFilter === 'ALL'
+      ? categories
+      : categories.filter((c) => c.status === statusFilter);
+
   return (
     <div className="stack">
-      <PageHeader eyebrow="Quản trị" title="Danh mục" subtitle="Nhóm các khóa học theo chủ đề để học viên dễ tìm kiếm." />
+      <PageHeader
+        eyebrow="Quản trị cấu trúc đào tạo"
+        title="Danh mục Khóa học"
+        subtitle="Phân nhóm các khóa học theo lĩnh vực chuyên môn để hiển thị trên thanh điều hướng và bộ lọc."
+      />
 
       <Alert variant={notice.type}>{notice.text}</Alert>
+
+      <div className="nx-dash-breakdown-grid">
+        <div className="nx-dash-panel">
+          <div className="nx-dash-stat-label">Tổng danh mục đào tạo</div>
+          <div className="nx-dash-stat-value">{formatNumber(categories.length)}</div>
+        </div>
+        <div className="nx-dash-panel">
+          <div className="nx-dash-stat-label">Đang hoạt động công khai</div>
+          <div className="nx-dash-stat-value" style={{ color: '#059669' }}>
+            {formatNumber(activeCount)}
+          </div>
+        </div>
+        <div className="nx-dash-panel">
+          <div className="nx-dash-stat-label">Đang ngừng sử dụng</div>
+          <div className="nx-dash-stat-value" style={{ color: '#d97706' }}>
+            {formatNumber(inactiveCount)}
+          </div>
+        </div>
+      </div>
 
       <div className="admin-grid">
         <Card
           className="admin-form-card"
-          title={editing ? 'Sửa danh mục' : 'Thêm danh mục'}
-          subtitle={editing ? `Đang sửa: ${editing.name}` : 'Tên danh mục không được trùng nhau.'}
+          title={editing ? 'Sửa danh mục' : 'Thêm danh mục mới'}
+          subtitle={editing ? `Đang chỉnh sửa: ${editing.name}` : 'Tên danh mục hiển thị trực tiếp ở trang chủ & bộ lọc.'}
         >
           {!Object.keys(error.fieldErrors).length && <Alert variant="error">{error.message}</Alert>}
 
@@ -133,20 +161,20 @@ export default function AdminCategoryPage() {
               required
             />
             <FormField
-              label="Mô tả"
+              label="Mô tả lĩnh vực"
               name="description"
               as="textarea"
               rows={3}
-              placeholder="Giới thiệu ngắn về chủ đề này"
+              placeholder="Giới thiệu ngắn về chủ đề đào tạo này"
               value={form.description}
               onChange={handleChange}
               error={error.fieldErrors.description}
             />
             <FormField
-              label="Ảnh (URL)"
+              label="Ảnh đại diện (URL)"
               name="image"
               type="url"
-              placeholder="https://example.com/category.jpg"
+              placeholder="https://images.unsplash.com/..."
               value={form.image}
               onChange={handleChange}
               error={error.fieldErrors.image}
@@ -166,25 +194,43 @@ export default function AdminCategoryPage() {
 
             <div className="form-actions">
               {editing && (
-                <Button variant="ghost" onClick={resetForm} disabled={submitting}>Hủy</Button>
+                <Button variant="ghost" onClick={resetForm} disabled={submitting}>Hủy sửa</Button>
               )}
               <Button type="submit" loading={submitting}>
-                {submitting ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Thêm danh mục'}
+                <Icon name="check" size={15} />
+                <span>{submitting ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Thêm danh mục'}</span>
               </Button>
             </div>
           </form>
         </Card>
 
-        <Card title="Tất cả danh mục" subtitle={`${categories.length} danh mục`}>
+        <Card title="Tất cả danh mục" subtitle={`${filteredCategories.length} / ${categories.length} danh mục`}>
+          <div className="nx-filter-pills" role="tablist" aria-label="Lọc danh mục">
+            {[
+              { value: 'ALL', label: `Tất cả (${categories.length})` },
+              { value: 'ACTIVE', label: `Đang hoạt động (${activeCount})` },
+              { value: 'INACTIVE', label: `Ngừng dùng (${inactiveCount})` },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setStatusFilter(tab.value)}
+                className={`nx-filter-pill${statusFilter === tab.value ? ' is-active' : ''}`}
+              >
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
           {loadError ? (
             <Alert variant="error">
               {loadError.message}{' '}
               <button type="button" className="text-link" onClick={reload}>Thử lại</button>
             </Alert>
-          ) : categories.length === 0 ? (
+          ) : filteredCategories.length === 0 ? (
             <EmptyState
               icon="layers"
-              title="Chưa có danh mục nào"
+              title="Chưa có danh mục phù hợp"
               description="Tạo danh mục đầu tiên ở khung bên cạnh, sau đó thêm khóa học vào danh mục."
             />
           ) : (
@@ -200,17 +246,28 @@ export default function AdminCategoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {categories.map((category) => {
+                  {filteredCategories.map((category) => {
                     const status = statusOption(CATEGORY_STATUSES, category.status);
                     const busy = busyId === category.id;
                     return (
                       <tr key={category.id} className={editing?.id === category.id ? 'is-selected' : undefined}>
-                        <td className="text-muted">#{category.id}</td>
+                        <td className="nx-dash-code">#{category.id}</td>
                         <td>
-                          <div className="cell-title">{category.name}</div>
-                          {category.description && (
-                            <div className="cell-sub cell-truncate">{category.description}</div>
-                          )}
+                          <div className="nx-course-cell">
+                            <div className="nx-course-thumb">
+                              {category.image ? (
+                                <img src={category.image} alt="" loading="lazy" />
+                              ) : (
+                                <Icon name="layers" size={18} />
+                              )}
+                            </div>
+                            <div className="nx-course-meta">
+                              <div className="cell-title">{category.name}</div>
+                              {category.description && (
+                                <div className="cell-sub cell-truncate">{category.description}</div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td><Badge variant={status.variant}>{status.label}</Badge></td>
                         <td>{formatDate(category.createdAt)}</td>

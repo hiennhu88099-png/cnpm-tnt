@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi, userApi } from '../api/authApi';
 import { setUnauthorizedHandler, tokenStorage } from '../api/client';
+import { clearUserShopSession, syncShopFromBackend } from '../utils/shopStore';
 import { AuthContext } from './useAuth';
 
 export function AuthProvider({ children }) {
@@ -12,6 +13,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     tokenStorage.clear();
+    clearUserShopSession();
     setUser(null);
   }, []);
 
@@ -36,6 +38,7 @@ export function AuthProvider({ children }) {
     const data = await authApi.login({ email, password });
     tokenStorage.set(data.accessToken);
     setUser(data.user);
+    syncShopFromBackend(true);
     return data.user;
   }, []);
 

@@ -37,6 +37,10 @@ public class CourseSummaryResponse {
 
     // Must be called inside a transaction: reads the lazy category
     public static CourseSummaryResponse from(Course course, long lessonCount) {
+        return from(course, lessonCount, null, 0L);
+    }
+
+    public static CourseSummaryResponse from(Course course, long lessonCount, Double averageRating, Long reviewCount) {
         return CourseSummaryResponse.builder()
                 .id(course.getId())
                 .categoryId(course.getCategory().getId())
@@ -50,6 +54,8 @@ public class CourseSummaryResponse {
                 .duration(course.getDuration())
                 .status(course.getStatus())
                 .lessonCount(lessonCount)
+                .averageRating(averageRating)
+                .reviewCount(reviewCount != null ? reviewCount : 0L)
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();

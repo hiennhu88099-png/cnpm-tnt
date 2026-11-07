@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -264,6 +265,10 @@ public class ShopService {
                 existing.setStatus("COMPLETED");
                 activateOrderEnrollments(user, courses, courseIds);
                 existing = courseOrderRepository.save(existing);
+            } else if ("PENDING".equalsIgnoreCase(targetStatus) && "CANCELLED".equalsIgnoreCase(existing.getStatus())) {
+                existing.setStatus("PENDING");
+                existing.setCreatedAt(LocalDateTime.now());
+                existing = courseOrderRepository.save(existing);
             }
             return CourseOrderResponse.from(existing);
         }
@@ -323,7 +328,17 @@ public class ShopService {
         }
     }
 
-    @Transactional(readOnly = true)
+    private void expireStalePendingOrder(CourseOrder order) {
+        if (order != null
+            && "PENDING".equalsIgnoreCase(order.getStatus())
+            && order.getCreatedAt() != null
+            && order.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(15))) {
+            order.setStatus("CANCELLED");
+            courseOrderRepository.save(order);
+        }
+    }
+
+    @Transactional
     public CourseOrderResponse getOrderStatusByCode(User user, String orderCode) {
         String code = orderCode == null ? "" : orderCode.trim().toUpperCase();
         CourseOrder order = courseOrderRepository.findByOrderCodeWithUser(code)
@@ -331,7 +346,24 @@ public class ShopService {
         if (!Objects.equals(order.getUser().getId(), user.getId()) && user.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("Không có quyền xem đơn hàng này");
         }
+        expireStalePendingOrder(order);
         return CourseOrderResponse.from(order);
+    }
+
+    @Transactional
+    public CourseOrderResponse cancelOrder(User user, String orderCode) {
+        String code = orderCode == null ? "" : orderCode.trim().toUpperCase();
+        CourseOrder order = courseOrderRepository.findByOrderCodeWithUser(code)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+        if (!Objects.equals(order.getUser().getId(), user.getId()) && user.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Không có quyền hủy đơn hàng này");
+        }
+        if ("COMPLETED".equalsIgnoreCase(order.getStatus())) {
+            throw new FieldValidationException("status", "Đơn hàng đã thanh toán thành công không thể hủy");
+        }
+        order.setStatus("CANCELLED");
+        CourseOrder saved = courseOrderRepository.save(order);
+        return CourseOrderResponse.from(saved);
     }
 
     @Transactional
@@ -380,18 +412,20 @@ public class ShopService {
         return Map.of("success", true, "matched", false);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<CourseOrderResponse> getUserOrders(User user) {
-        return courseOrderRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
-            .stream()
+        List<CourseOrder> orders = courseOrderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        orders.forEach(this::expireStalePendingOrder);
+        return orders.stream()
             .map(CourseOrderResponse::from)
             .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<CourseOrderResponse> getAllOrders() {
-        return courseOrderRepository.findAllWithUserOrderByCreatedAtDesc()
-            .stream()
+        List<CourseOrder> orders = courseOrderRepository.findAllWithUserOrderByCreatedAtDesc();
+        orders.forEach(this::expireStalePendingOrder);
+        return orders.stream()
             .map(CourseOrderResponse::from)
             .toList();
     }

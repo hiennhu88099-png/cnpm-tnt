@@ -4,18 +4,26 @@ import { formatDate, formatNumber, formatPrice } from './format.js';
 import {
   addToCart,
   clearCart,
+  clearUserShopSession,
   computeVoucherDiscount,
   deleteBanner,
+  deleteVoucher,
   getActiveBanners,
+  getActiveVouchers,
   getAllBanners,
+  getAllVouchers,
   getCart,
+  getWishlist,
   isInCart,
   isInWishlist,
   isVoucherSaved,
   removeFromCart,
+  removeMultipleFromCart,
   saveBanner,
   saveUserVoucher,
+  saveVoucher,
   toggleBannerActive,
+  toggleVoucherActive,
   toggleWishlist,
 } from './shopStore.js';
 
@@ -110,6 +118,45 @@ describe('Cart, Wishlist & Banner Store Logic (shopStore.js)', () => {
 
     await deleteBanner(created.id);
     assert.equal(getAllBanners().some((b) => b.id === created.id), false);
+  });
+
+  it('creates, updates, toggles and deletes vouchers in memory cache', () => {
+    const v = saveVoucher({
+      code: 'summer50',
+      type: 'percent',
+      value: 50,
+      maxDiscount: 200000,
+      minOrderAmount: 300000,
+      description: 'Giảm 50% hè',
+      endDate: '2027-12-31',
+      active: true,
+    });
+    assert.equal(v.code, 'SUMMER50');
+    assert.equal(getActiveVouchers().some((item) => item.id === v.id), true);
+
+    toggleVoucherActive(v.id);
+    assert.equal(getActiveVouchers().some((item) => item.id === v.id), false);
+
+    deleteVoucher(v.id);
+    assert.equal(getAllVouchers().some((item) => item.id === v.id), false);
+  });
+
+  it('removes multiple purchased courses from cart and clears user session on logout', () => {
+    clearCart();
+    addToCart({ id: 301, title: 'Khóa A', price: 100000 });
+    addToCart({ id: 302, title: 'Khóa B', price: 200000 });
+    addToCart({ id: 303, title: 'Khóa C', price: 300000 });
+    removeMultipleFromCart([301, 303]);
+    assert.equal(getCart().length, 1);
+    assert.equal(getCart()[0].id, 302);
+
+    toggleWishlist({ id: 401, title: 'Khóa Yêu thích', price: 150000 });
+    saveUserVoucher('LOGOUTTEST');
+    clearUserShopSession();
+
+    assert.equal(getCart().length, 0);
+    assert.equal(getWishlist().length, 0);
+    assert.equal(isVoucherSaved('LOGOUTTEST'), false);
   });
 });
 

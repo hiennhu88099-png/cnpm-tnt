@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import OrderHistoryPage from './pages/OrderHistoryPage';
 import UiKitPage from './pages/UiKitPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CourseListPage from './pages/CourseListPage';
@@ -39,7 +40,6 @@ export default function App() {
         <Route path="/ui-kit" element={<UiKitPage />} />
         <Route path="/courses" element={<CourseListPage />} />
         <Route path="/courses/:id" element={<CourseDetailPage />} />
-        <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/cart" element={<CartPage />} />
 
         {/* Chỉ dành cho khách (đã đăng nhập sẽ bị chuyển về /profile) */}
@@ -52,8 +52,10 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AccountLayout />}>
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
           </Route>
+          <Route path="/wishlist" element={<WishlistPage />} />
           <Route path="/my-courses" element={<MyCoursesPage />} />
           <Route path="/learning/:courseId" element={<LearningPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />

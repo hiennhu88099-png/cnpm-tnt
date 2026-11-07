@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { courseApi } from '../api/courseApi';
 import { parseApiError } from '../api/apiError';
@@ -24,17 +24,6 @@ const FEATURED_COUNT = 6;
 
 const CATEGORY_COLORS = [
   { background: '#eff6ff', color: '#2563eb' },
-];
-
-const QUICK_SERVICES = [
-  { icon: 'code', label: 'Lập trình Web', color: '#2563eb', bg: '#eff6ff', to: '/courses?q=Web' },
-  { icon: 'cpu', label: 'AI & Dữ liệu', color: '#2563eb', bg: '#eff6ff', to: '/courses?q=AI' },
-  { icon: 'pen', label: 'Thiết kế UI/UX', color: '#2563eb', bg: '#eff6ff', to: '/courses?q=UI' },
-  { icon: 'star', label: 'Khóa học VIP', color: '#2563eb', bg: '#eff6ff', to: '/courses' },
-  { icon: 'graduation', label: 'Góc học tập', color: '#2563eb', bg: '#eff6ff', to: '/my-courses' },
-  { icon: 'award', label: 'Cấp chứng chỉ', color: '#2563eb', bg: '#eff6ff', to: '/courses' },
-  { icon: 'tag', label: 'Ưu đãi Hot', color: '#2563eb', bg: '#eff6ff', to: '#home-vouchers' },
-  { icon: 'shield', label: 'Hỗ trợ 24/7', color: '#2563eb', bg: '#eff6ff', to: '/courses' },
 ];
 
 const FEATURES = [
@@ -62,6 +51,7 @@ function BannerAnchor({ link, title, className, children }) {
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const {
     activeBanners,
     activeVouchers,
@@ -75,6 +65,24 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [nearFooter, setNearFooter] = useState(false);
+  const categoryScrollRef = useRef(null);
+  const [canScrollCatLeft, setCanScrollCatLeft] = useState(false);
+  const [canScrollCatRight, setCanScrollCatRight] = useState(false);
+
+  const updateCategoryScrollButtons = useCallback(() => {
+    const el = categoryScrollRef.current;
+    if (!el) return;
+    setCanScrollCatLeft(el.scrollLeft > 4);
+    setCanScrollCatRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  function handleScrollCategories(direction) {
+    const el = categoryScrollRef.current;
+    if (!el) return;
+    const firstTile = el.querySelector('.category-tile');
+    const step = firstTile ? (firstTile.offsetWidth + 16) * 2 : el.clientWidth * 0.65;
+    el.scrollBy({ left: direction * step, behavior: 'smooth' });
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -116,6 +124,18 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    const el = categoryScrollRef.current;
+    if (!el) return undefined;
+    updateCategoryScrollButtons();
+    el.addEventListener('scroll', updateCategoryScrollButtons, { passive: true });
+    window.addEventListener('resize', updateCategoryScrollButtons);
+    return () => {
+      el.removeEventListener('scroll', updateCategoryScrollButtons);
+      window.removeEventListener('resize', updateCategoryScrollButtons);
+    };
+  }, [categories, loading, updateCategoryScrollButtons]);
+
   const primaryBanner = activeBanners.find((b) => b.type === 'HomeMain') || activeBanners[0];
   const promoBanners = activeBanners.filter((b) => b.type === 'Promo');
   const sideBanners = activeBanners.filter((b) => b.type === 'Side');
@@ -125,6 +145,10 @@ export default function HomePage() {
   const supportingBanners = [...promoBanners.slice(1), ...sideBanners];
 
   function handleCopyVoucher(code) {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: '/' } } });
+      return;
+    }
     saveUserVoucher(code);
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(code);
@@ -237,31 +261,7 @@ export default function HomePage() {
         </>
       )}
 
-      {/* 3. Thanh Dịch vụ & Điều hướng nhanh (8 ô biểu tượng) */}
-      <section className="store-quick-nav-section">
-        <div className="container">
-          <div className="store-quick-nav-bar">
-            {QUICK_SERVICES.map((item) => {
-              const isHash = item.to.startsWith('#');
-              const Tag = isHash ? 'a' : Link;
-              const linkProps = isHash ? { href: item.to } : { to: item.to };
-              return (
-                <Tag key={item.label} {...linkProps} className="store-quick-nav-item">
-                  <div
-                    className="store-quick-nav-icon"
-                    style={{ background: item.bg, color: item.color }}
-                  >
-                    <Icon name={item.icon} size={26} />
-                  </div>
-                  <span className="store-quick-nav-label">{item.label}</span>
-                </Tag>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Ví Mã Giảm Giá Chớp Nhoáng ngay dưới cụm Banner */}
+      {/* Ví Mã Giảm Giá Chớp Nhoáng ngay dưới cụm Banner */}
       {(vouchersLoading || activeVouchers.length > 0) && (
         <section id="home-vouchers" className="store-voucher-section">
           <div className="container">
@@ -277,7 +277,7 @@ export default function HomePage() {
             ) : (
               <div className="store-voucher-grid">
                 {activeVouchers.slice(0, 4).map((v) => {
-                  const isSaved = isVoucherSaved(v.code);
+                  const isSaved = isAuthenticated && isVoucherSaved(v.code);
                   return (
                     <div key={v.id} className="store-ticket-card">
                       <div className="store-ticket-dots" aria-hidden="true">
@@ -335,11 +335,33 @@ export default function HomePage() {
                 <h2 className="section-title">Khám phá theo danh mục</h2>
                 <p className="section-subtitle">Chọn lĩnh vực bạn quan tâm để bắt đầu.</p>
               </div>
+              {!loading && (canScrollCatLeft || canScrollCatRight) && (
+                <div className="category-carousel-nav" role="group" aria-label="Điều hướng danh mục">
+                  <button
+                    type="button"
+                    className="category-carousel-btn"
+                    onClick={() => handleScrollCategories(-1)}
+                    disabled={!canScrollCatLeft}
+                    aria-label="Danh mục trước"
+                  >
+                    <Icon name="chevronLeft" size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    className="category-carousel-btn"
+                    onClick={() => handleScrollCategories(1)}
+                    disabled={!canScrollCatRight}
+                    aria-label="Danh mục tiếp theo"
+                  >
+                    <Icon name="chevronRight" size={18} />
+                  </button>
+                </div>
+              )}
             </div>
             {loading ? (
               <CategoryGridSkeleton count={6} />
             ) : (
-              <div className="category-grid">
+              <div ref={categoryScrollRef} className="category-grid category-grid-carousel">
                 {categories.map((category, index) => (
                   <Link key={category.id} to={`/courses?categoryId=${category.id}`} className="category-tile">
                     <span className="category-tile-icon" style={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}>

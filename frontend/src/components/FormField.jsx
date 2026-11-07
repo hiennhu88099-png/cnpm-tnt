@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Icon } from './ui';
+import { CustomSelect, Icon } from './ui';
 
 /**
  * Ô nhập liệu có label + thông báo lỗi.
@@ -13,7 +13,7 @@ export default function FormField({ label, name, icon, error, hint, as: Control 
   const isPassword = Control === 'input' && type === 'password';
   const resolvedType = isPassword ? (showPassword ? 'text' : 'password') : type;
   const describedBy = error ? `${name}-error` : hint ? `${name}-hint` : undefined;
-  const hasWrap = isPassword || Boolean(icon);
+  const hasWrap = Control !== 'select' && (isPassword || Boolean(icon));
 
   const inputClassName = [
     'input',
@@ -23,20 +23,32 @@ export default function FormField({ label, name, icon, error, hint, as: Control 
     .filter(Boolean)
     .join(' ');
 
-  const controlEl = (
-    <Control
-      id={name}
-      name={name}
-      type={resolvedType}
-      className={inputClassName}
-      required={required}
-      aria-invalid={Boolean(error)}
-      aria-describedby={describedBy}
-      {...inputProps}
-    >
-      {children}
-    </Control>
-  );
+  const controlEl =
+    Control === 'select' ? (
+      <CustomSelect
+        id={name}
+        name={name}
+        leftIcon={icon}
+        aria-invalid={Boolean(error)}
+        aria-describedby={describedBy}
+        {...inputProps}
+      >
+        {children}
+      </CustomSelect>
+    ) : (
+      <Control
+        id={name}
+        name={name}
+        type={resolvedType}
+        className={inputClassName}
+        required={required}
+        aria-invalid={Boolean(error)}
+        aria-describedby={describedBy}
+        {...inputProps}
+      >
+        {children}
+      </Control>
+    );
 
   return (
     <div className="field">

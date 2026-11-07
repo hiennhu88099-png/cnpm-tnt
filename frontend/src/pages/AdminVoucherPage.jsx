@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Card,
+  CustomSelect,
   EmptyState,
   Icon,
   PageHeader,
@@ -319,14 +320,13 @@ export default function AdminVoucherPage() {
 
                 <div>
                   <label className="field-label">Hình thức giảm *</label>
-                  <select
-                    className="input"
+                  <CustomSelect
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   >
                     <option value="percent">Giảm theo phần trăm (%)</option>
                     <option value="fixed">Giảm số tiền cố định (VNĐ)</option>
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>

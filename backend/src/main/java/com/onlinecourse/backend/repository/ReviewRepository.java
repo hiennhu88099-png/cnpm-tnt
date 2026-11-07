@@ -8,10 +8,24 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface ReviewRepository
         extends JpaRepository<Review, Long> {
+
+    @Query("""
+        SELECT r.course.id, AVG(r.rating), COUNT(r)
+        FROM Review r
+        WHERE r.course.id IN :courseIds
+          AND r.status = :status
+        GROUP BY r.course.id
+        """)
+    List<Object[]> aggregateByCourseIds(
+        @Param("courseIds") Collection<Long> courseIds,
+        @Param("status") ReviewStatus status
+    );
 
     long countByStatus(ReviewStatus status);
 

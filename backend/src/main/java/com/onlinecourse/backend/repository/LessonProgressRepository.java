@@ -17,4 +17,8 @@ public interface LessonProgressRepository
     List<LessonProgress> findByEnrollmentIdAndCompletedTrue(
         Long enrollmentId
     );
+
+    List<LessonProgress> findByEnrollmentId(
+        Long enrollmentId
+    );
 }

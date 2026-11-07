@@ -147,6 +147,8 @@ export default function SePayPaymentPage() {
                 `/checkout/success?courseId=${primaryId}&courseIds=${targetKey}&orderId=${order.id || ''}&amount=${amount}&method=SEPAY&code=${refCode}`,
               );
             }, 900);
+          } else if (order?.status === 'CANCELLED') {
+            setStatus('EXPIRED');
           }
         })
         .catch(() => {});
@@ -160,13 +162,16 @@ export default function SePayPaymentPage() {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           setStatus('EXPIRED');
+          if (refCode) {
+            shopApi.cancelOrder(refCode).catch(() => {});
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [status]);
+  }, [status, refCode]);
 
   if (!primaryId) {
     return (
@@ -264,6 +269,20 @@ export default function SePayPaymentPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (targetKey && refCode && amount > 0) {
+                      const ids = targetKey.split(',').map(Number).filter(Boolean);
+                      shopApi
+                        .createPendingOrder({
+                          orderCode: refCode,
+                          courseIds: ids,
+                          subtotalAmount: Number(subtotalParam ?? amount),
+                          discountAmount: Number(discountParam ?? 0),
+                          finalAmount: amount,
+                          voucherCode: couponParam || '',
+                          paymentMethod: 'SEPAY',
+                        })
+                        .catch(() => {});
+                    }
                     setSecondsLeft(15 * 60);
                     setStatus('WAITING');
                   }}
@@ -350,13 +369,16 @@ export default function SePayPaymentPage() {
               </button>
               <button
                 type="button"
-                onClick={() =>
+                onClick={async () => {
+                  if (refCode) {
+                    await shopApi.cancelOrder(refCode).catch(() => {});
+                  }
                   navigate(
                     targetIds.length > 1
                       ? `/checkout?mode=cart&courseIds=${targetKey}`
                       : `/checkout?courseId=${primaryId}`,
-                  )
-                }
+                  );
+                }}
                 className="sepay-modal-confirm-cancel"
               >
                 Hủy ngay

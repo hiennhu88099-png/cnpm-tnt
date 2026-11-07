@@ -12,7 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,15 +34,16 @@ public class LearningService {
         Enrollment enrollment =
             accessibleEnrollment(user, courseId);
 
-        Set<Long> completedIds = enrollment == null
-            ? Set.of()
+        Map<Long, LessonProgress> progressMap = enrollment == null
+            ? Map.of()
             : progressRepository
-                .findByEnrollmentIdAndCompletedTrue(
-                    enrollment.getId()
-                )
+                .findByEnrollmentId(enrollment.getId())
                 .stream()
-                .map(p -> p.getLesson().getId())
-                .collect(Collectors.toSet());
+                .collect(Collectors.toMap(
+                    p -> p.getLesson().getId(),
+                    Function.identity(),
+                    (existing, replacement) -> existing
+                ));
 
         return lessonRepository
             .findAllByCourseIdAndStatusOrderByLessonOrderAsc(
@@ -48,16 +51,65 @@ public class LearningService {
                 LessonStatus.ACTIVE
             )
             .stream()
-            .map(lesson -> new LearningLessonResponse(
-                lesson.getId(),
-                lesson.getTitle(),
-                lesson.getDescription(),
-                lesson.getVideoUrl(),
-                lesson.getDuration(),
-                lesson.getLessonOrder(),
-                completedIds.contains(lesson.getId())
-            ))
+            .map(lesson -> {
+                LessonProgress lp = progressMap.get(lesson.getId());
+                boolean completed = lp != null && lp.isCompleted();
+                int lastWatchedSec = lp != null && lp.getLastWatchedSecond() != null
+                    ? lp.getLastWatchedSecond()
+                    : 0;
+                return new LearningLessonResponse(
+                    lesson.getId(),
+                    lesson.getTitle(),
+                    lesson.getDescription(),
+                    lesson.getVideoUrl(),
+                    lesson.getDuration(),
+                    lesson.getLessonOrder(),
+                    completed,
+                    lastWatchedSec
+                );
+            })
             .toList();
+    }
+
+    // Luu vi tri giay dang xem video xuong database (Resume Playback da thiet bi)
+    @Transactional
+    public Map<String, Object> saveWatchPosition(
+            User user, Long lessonId, int lastWatchedSecond) {
+
+        Lesson lesson = lessonRepository.findById(lessonId)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Lesson not found"
+            ));
+
+        if (lesson.getStatus() != LessonStatus.ACTIVE) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Lesson inactive"
+            );
+        }
+
+        Long courseId = lesson.getCourse().getId();
+        Enrollment enrollment = enrollmentService.requireAccess(user, courseId);
+
+        LessonProgress progress = progressRepository
+            .findByEnrollmentIdAndLessonId(enrollment.getId(), lessonId)
+            .orElseGet(() ->
+                LessonProgress.builder()
+                    .enrollment(enrollment)
+                    .lesson(lesson)
+                    .build()
+            );
+
+        int safeSecond = Math.max(0, lastWatchedSecond);
+        progress.setLastWatchedSecond(safeSecond);
+        progressRepository.saveAndFlush(progress);
+
+        return Map.of(
+            "lessonId", lessonId,
+            "lastWatchedSecond", safeSecond,
+            "completed", progress.isCompleted()
+        );
     }
 
     // Danh dau bai hoc da hoan thanh

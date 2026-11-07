@@ -8,7 +8,9 @@ export function ProtectedRoute() {
   const location = useLocation();
 
   if (initializing) return <PageLoading />;
-  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search || ''}` }} />;
+  }
   return <Outlet />;
 }
 

@@ -41,6 +41,12 @@ services:
       SEPAY_ACCOUNT_HOLDER: ${SEPAY_ACCOUNT_HOLDER:-EDUHUB ACADEMY}
       SEPAY_PREFIX: ${SEPAY_PREFIX:-EDUHUB}
       SEPAY_WEBHOOK_SECRET: ${SEPAY_WEBHOOK_SECRET:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     networks:
       - app-net
     restart: unless-stopped
