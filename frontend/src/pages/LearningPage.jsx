@@ -1,10 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { learningApi } from '../api/learningApi';
 import { LearningPageSkeleton } from '../components/ui';
 
 // Nguồn video dự phòng tốc độ cao (Fastly CDN của Video.js)
 const FALLBACK_VIDEO_URL = 'https://vjs.zencdn.net/v/oceans.mp4';
+const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 2];
+
+function formatSeconds(sec) {
+    const total = Math.max(0, Math.floor(Number(sec) || 0));
+    const m = String(Math.floor(total / 60)).padStart(2, '0');
+    const s = String(total % 60).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+function getSavedPositionKey(lessonId) {
+    return `eduhub_video_pos_${lessonId}`;
+}
 
 /**
  * Trích xuất ID YouTube nếu có
@@ -15,17 +27,134 @@ function getYouTubeEmbedUrl(url) {
         /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
     );
     if (!match) return null;
-    // Sử dụng no-cookie domain để hạn chế tối đa lỗi "Video unavailable"
     return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&modestbranding=1`;
 }
 
 /**
- * Trình phát video chuẩn HTML5 đa năng, tự động fallback nếu link lỗi
+ * Trình phát video thông minh:
+ * - Lưu & khôi phục vị trí đang xem (Resume Playback)
+ * - Tự động đánh dấu hoàn thành bài học khi xem đạt >= 80% thời lượng
+ * - Chỉnh tốc độ phát (0.75x -> 2x), nút tua -10s / +10s và phím tắt Space / Mũi tên trái phải
  */
-function LessonVideoPlayer({ url, title }) {
+function LessonVideoPlayer({ lessonId, url, title, isCompleted, onAutoComplete }) {
+    const videoRef = useRef(null);
+    const lastSavedTimeRef = useRef(0);
+    const autoCompletedRef = useRef(false);
+
     const [videoSrc, setVideoSrc] = useState(url);
     const [hasError, setHasError] = useState(false);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [watchedPercent, setWatchedPercent] = useState(0);
+    const [resumedFrom, setResumedFrom] = useState(null);
+    const [autoCompleteToast, setAutoCompleteToast] = useState(false);
+
     const ytEmbedUrl = getYouTubeEmbedUrl(url);
+
+    useEffect(() => {
+        autoCompletedRef.current = Boolean(isCompleted);
+    }, [isCompleted, lessonId]);
+
+    const seekBy = useCallback((deltaSeconds) => {
+        const video = videoRef.current;
+        if (!video) return;
+        const duration = Number.isFinite(video.duration) ? video.duration : Infinity;
+        video.currentTime = Math.min(duration, Math.max(0, video.currentTime + deltaSeconds));
+    }, []);
+
+    const changeSpeed = (rate) => {
+        setPlaybackRate(rate);
+        if (videoRef.current) {
+            videoRef.current.playbackRate = rate;
+        }
+    };
+
+    const restartFromBeginning = () => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play().catch(() => {});
+        }
+        setResumedFrom(null);
+    };
+
+    // Phím tắt bàn phím: Space (Play/Pause), ArrowLeft (-10s), ArrowRight (+10s)
+    useEffect(() => {
+        if (ytEmbedUrl) return undefined;
+
+        const handleKeyDown = (e) => {
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') {
+                return;
+            }
+            const video = videoRef.current;
+            if (!video) return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (video.paused) {
+                    video.play().catch(() => {});
+                } else {
+                    video.pause();
+                }
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                seekBy(-10);
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                seekBy(10);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [seekBy, ytEmbedUrl]);
+
+    const handleLoadedMetadata = () => {
+        const video = videoRef.current;
+        if (!video) return;
+        video.playbackRate = playbackRate;
+
+        if (!lessonId) return;
+        try {
+            const savedSec = Number(localStorage.getItem(getSavedPositionKey(lessonId)) || 0);
+            if (savedSec > 3 && Number.isFinite(video.duration) && savedSec < video.duration - 5) {
+                video.currentTime = savedSec;
+                setResumedFrom(savedSec);
+            }
+        } catch {
+            // ignore
+        }
+    };
+
+    const saveCurrentPosition = (currentTime) => {
+        if (!lessonId || !Number.isFinite(currentTime)) return;
+        try {
+            localStorage.setItem(getSavedPositionKey(lessonId), String(Math.floor(currentTime)));
+        } catch {
+            // ignore
+        }
+    };
+
+    const handleTimeUpdate = () => {
+        const video = videoRef.current;
+        if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+
+        const current = video.currentTime;
+        const pct = Math.min(100, Math.round((current / video.duration) * 100));
+        setWatchedPercent(pct);
+
+        // Định kỳ lưu vị trí mỗi 5 giây
+        if (Math.abs(current - lastSavedTimeRef.current) >= 5) {
+            lastSavedTimeRef.current = current;
+            saveCurrentPosition(current);
+        }
+
+        // Tự động hoàn thành bài học khi xem đạt >= 80% thời lượng
+        if (pct >= 80 && !autoCompletedRef.current && onAutoComplete) {
+            autoCompletedRef.current = true;
+            setAutoCompleteToast(true);
+            onAutoComplete();
+        }
+    };
 
     if (!url) {
         return (
@@ -77,60 +206,192 @@ function LessonVideoPlayer({ url, title }) {
         );
     }
 
-    // Mặc định: Trình phát MP4 chuẩn HTML5 với cơ chế tự động chuyển nguồn dự phòng nếu lỗi
+    // Mặc định: Trình phát MP4 chuẩn HTML5 kèm điều khiển thông minh
     return (
-        <div
-            style={{
-                borderRadius: '12px',
-                overflow: 'hidden',
-                background: '#000',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }}
-        >
-            <video
-                key={videoSrc}
-                controls
-                playsInline
-                preload="metadata"
-                onError={() => {
-                    if (videoSrc !== FALLBACK_VIDEO_URL) {
-                        setVideoSrc(FALLBACK_VIDEO_URL);
-                    } else {
-                        setHasError(true);
-                    }
-                }}
+        <div>
+            <div
                 style={{
-                    width: '100%',
-                    display: 'block',
-                    aspectRatio: '16/9',
-                    background: '#000'
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    background: '#000',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}
-                src={videoSrc}
             >
-                Trình duyệt không hỗ trợ xem video trực tiếp.
-            </video>
+                <video
+                    ref={videoRef}
+                    key={videoSrc}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onTimeUpdate={handleTimeUpdate}
+                    onPause={() => videoRef.current && saveCurrentPosition(videoRef.current.currentTime)}
+                    onError={() => {
+                        if (videoSrc !== FALLBACK_VIDEO_URL) {
+                            setVideoSrc(FALLBACK_VIDEO_URL);
+                        } else {
+                            setHasError(true);
+                        }
+                    }}
+                    style={{
+                        width: '100%',
+                        display: 'block',
+                        aspectRatio: '16/9',
+                        background: '#000'
+                    }}
+                    src={videoSrc}
+                >
+                    Trình duyệt không hỗ trợ xem video trực tiếp.
+                </video>
 
-            {hasError && (
+                {hasError && (
+                    <div
+                        style={{
+                            padding: '12px 16px',
+                            background: '#fef2f2',
+                            color: '#b91c1c',
+                            fontSize: '14px',
+                            textAlign: 'center'
+                        }}
+                    >
+                        Không thể phát trực tiếp video từ nguồn này.{' '}
+                        <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'underline' }}
+                        >
+                            Bấm vào đây để mở video ở tab mới ↗
+                        </a>
+                    </div>
+                )}
+            </div>
+
+            {/* Thông báo khôi phục vị trí xem hoặc tự động hoàn thành >= 80% */}
+            {(resumedFrom !== null || autoCompleteToast) && (
                 <div
                     style={{
-                        padding: '12px 16px',
-                        background: '#fef2f2',
-                        color: '#b91c1c',
-                        fontSize: '14px',
-                        textAlign: 'center'
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        marginTop: '10px',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        background: autoCompleteToast ? '#ecfdf5' : '#eff6ff',
+                        border: `1px solid ${autoCompleteToast ? '#a7f3d0' : '#bfdbfe'}`,
+                        color: autoCompleteToast ? '#047857' : '#1d4ed8',
+                        fontSize: '13px',
+                        fontWeight: 600
                     }}
                 >
-                    Không thể phát trực tiếp video từ nguồn này.{' '}
-                    <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'underline' }}
-                    >
-                        Bấm vào đây để mở video ở tab mới ↗
-                    </a>
+                    {autoCompleteToast ? (
+                        <span>✓ Bạn đã xem đạt 80% thời lượng — Hệ thống đã tự động đánh dấu hoàn thành bài học!</span>
+                    ) : (
+                        <>
+                            <span>▶ Đang phát tiếp từ vị trí lần trước ({formatSeconds(resumedFrom)})</span>
+                            <button
+                                type="button"
+                                onClick={restartFromBeginning}
+                                style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#1d4ed8',
+                                    textDecoration: 'underline',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontSize: '12px'
+                                }}
+                            >
+                                Xem lại từ đầu
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
+
+            {/* Thanh điều khiển thông minh: Tua nhanh -10s/+10s, Tốc độ phát & Phím tắt */}
+            <div
+                style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginTop: '12px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                        type="button"
+                        onClick={() => seekBy(-10)}
+                        title="Phím tắt: Mũi tên trái (←)"
+                        style={{
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#334155',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        ⟲ -10s
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => seekBy(10)}
+                        title="Phím tắt: Mũi tên phải (→)"
+                        style={{
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#334155',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        +10s ⟳
+                    </button>
+                    <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '4px' }}>
+                        Đã xem: <strong style={{ color: '#0f172a' }}>{watchedPercent}%</strong> (Tự hoàn thành ở 80%)
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Tốc độ:</span>
+                    {PLAYBACK_SPEEDS.map((spd) => {
+                        const active = playbackRate === spd;
+                        return (
+                            <button
+                                key={spd}
+                                type="button"
+                                onClick={() => changeSpeed(spd)}
+                                style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    border: active ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                                    background: active ? '#2563eb' : '#ffffff',
+                                    color: active ? '#ffffff' : '#334155',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {spd}x
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }
@@ -187,8 +448,8 @@ export default function LearningPage() {
 
     }, [courseId]);
 
-    async function handleComplete() {
-        if (!selectedLesson || saving) {
+    const handleComplete = useCallback(async () => {
+        if (!selectedLesson || saving || selectedLesson.completed) {
             return;
         }
 
@@ -210,10 +471,11 @@ export default function LearningPage() {
                 )
             );
 
-            setSelectedLesson(old => ({
-                ...old,
-                completed: true
-            }));
+            setSelectedLesson(old => (
+                old && old.id === selectedLesson.id
+                    ? { ...old, completed: true }
+                    : old
+            ));
 
         } catch (err) {
             setError(
@@ -223,7 +485,7 @@ export default function LearningPage() {
         } finally {
             setSaving(false);
         }
-    }
+    }, [saving, selectedLesson]);
 
     if (loading) {
         return <LearningPageSkeleton />;
@@ -311,8 +573,11 @@ export default function LearningPage() {
 
                             <LessonVideoPlayer
                                 key={selectedLesson.id || selectedLesson.videoUrl}
+                                lessonId={selectedLesson.id}
                                 url={selectedLesson.videoUrl}
                                 title={selectedLesson.title}
+                                isCompleted={selectedLesson.completed}
+                                onAutoComplete={handleComplete}
                             />
 
                             <div

@@ -8,6 +8,7 @@ import com.onlinecourse.backend.repository.LessonProgressRepository;
 import com.onlinecourse.backend.repository.ReviewRepository;
 import com.onlinecourse.backend.repository.UserRepository;
 import com.onlinecourse.backend.repository.WishlistItemRepository;
+import com.onlinecourse.backend.security.RateLimitFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,8 +53,12 @@ public abstract class ApiTestSupport {
     @Autowired
     protected EnrollmentRepository enrollmentRepository;
 
+    @Autowired
+    protected RateLimitFilter rateLimitFilter;
+
     @BeforeEach
     void cleanDatabase() {
+        rateLimitFilter.resetBuckets();
         lessonProgressRepository.deleteAll();
         reviewRepository.deleteAll();
         enrollmentRepository.deleteAll();

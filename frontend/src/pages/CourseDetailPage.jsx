@@ -26,6 +26,8 @@ const TABS = [
   { id: 'reviews', label: 'Đánh giá học viên' },
 ];
 
+const PREVIEW_SAMPLE_VIDEO = 'https://vjs.zencdn.net/v/oceans.mp4';
+
 export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ export default function CourseDetailPage() {
   const [reviewSummary, setReviewSummary] = useState(null);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState('');
+  const [previewLessonId, setPreviewLessonId] = useState(null);
 
   const fetchCourse = useCallback(() => courseApi.getCourseById(id), [id]);
   const { data: course, error, loading } = useApiQuery(fetchCourse);
@@ -283,21 +286,113 @@ export default function CourseDetailPage() {
               <EmptyState icon="layers" title="Chưa có bài học" description="Nội dung khóa học đang được chuẩn bị." />
             ) : (
               <ol className="lesson-list">
-                {lessons.map((lesson) => (
-                  <li key={lesson.id} className="lesson-item">
-                    <span className="lesson-order">{lesson.lessonOrder}</span>
-                    <div>
-                      <div className="lesson-title">{lesson.title}</div>
-                      {lesson.description && <p className="lesson-desc">{lesson.description}</p>}
-                    </div>
-                    {lesson.duration > 0 && (
-                      <span className="lesson-duration">
-                        <Icon name="clock" size={14} />
-                        {formatDuration(lesson.duration)}
-                      </span>
-                    )}
-                  </li>
-                ))}
+                {lessons.map((lesson, idx) => {
+                  const isFreePreview = idx === 0;
+                  const canAccess = Boolean(enrollment) || isFreePreview;
+                  const isPreviewOpen = previewLessonId === lesson.id;
+
+                  return (
+                    <li
+                      key={lesson.id}
+                      className="lesson-item"
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%' }}>
+                        <span className="lesson-order">{lesson.lessonOrder}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <div className="lesson-title">{lesson.title}</div>
+                            {isFreePreview && !enrollment && (
+                              <Badge variant="success">Học thử miễn phí</Badge>
+                            )}
+                          </div>
+                          {lesson.description && <p className="lesson-desc">{lesson.description}</p>}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                          {lesson.duration > 0 && (
+                            <span className="lesson-duration">
+                              <Icon name="clock" size={14} />
+                              {formatDuration(lesson.duration)}
+                            </span>
+                          )}
+
+                          {enrollment ? (
+                            <Button size="sm" variant="secondary" to={`/learning/${course.id}`}>
+                              <Icon name="play" size={14} />
+                              <span>Vào học</span>
+                            </Button>
+                          ) : isFreePreview ? (
+                            <Button
+                              size="sm"
+                              variant={isPreviewOpen ? 'secondary' : 'primary'}
+                              onClick={() => setPreviewLessonId(isPreviewOpen ? null : lesson.id)}
+                            >
+                              <Icon name="play" size={14} />
+                              <span>{isPreviewOpen ? 'Đóng xem thử' : 'Xem thử'}</span>
+                            </Button>
+                          ) : (
+                            <span
+                              title="Vui lòng đăng ký khóa học để mở khóa bài học này"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '5px 10px',
+                                borderRadius: '999px',
+                                background: '#f1f5f9',
+                                color: '#64748b',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                              }}
+                            >
+                              <Icon name="lock" size={13} />
+                              <span>Đã khóa</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {canAccess && isPreviewOpen && (
+                        <div
+                          style={{
+                            marginTop: '4px',
+                            padding: '14px',
+                            borderRadius: '12px',
+                            background: '#0f172a',
+                            color: '#f8fafc',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '10px',
+                              fontSize: '13px',
+                            }}
+                          >
+                            <strong>🎬 Bản xem thử miễn phí: {lesson.title}</strong>
+                            <span style={{ color: '#94a3b8' }}>Đăng ký khóa học để mở khóa trọn bộ {lessons.length} bài giảng</span>
+                          </div>
+                          <video
+                            controls
+                            playsInline
+                            preload="metadata"
+                            src={PREVIEW_SAMPLE_VIDEO}
+                            style={{
+                              width: '100%',
+                              display: 'block',
+                              aspectRatio: '16/9',
+                              borderRadius: '8px',
+                              background: '#000',
+                            }}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </div>

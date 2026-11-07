@@ -213,5 +213,53 @@ class ShopAndPaymentControllerTest extends CourseApiTestSupport {
 
         assertEquals(1, enrollmentRepository.count());
     }
+
+    @Test
+    void sqlInjectionPayloads_areNeutralizedByParameterizedQueries() throws Exception {
+        createPublishedCourse("Java Spring Security", BigDecimal.valueOf(250000));
+
+        // 1. SQL Injection attempt on course keyword search returns 0 matches (not all rows)
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/courses")
+                        .param("keyword", "' OR '1'='1' --"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(0)));
+
+        // 2. SQL Injection attempt on login email is rejected safely
+        postJson("/api/auth/login", """
+                {
+                  "email": "admin@example.com' OR '1'='1",
+                  "password": "anything"
+                }
+                """)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void bruteForceLoginAttempts_exceedingRateLimit_returns429TooManyRequests() throws Exception {
+        String attackerIp = "203.0.113.99";
+
+        for (int i = 0; i < 20; i++) {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/api/auth/login")
+                            .header("X-Forwarded-For", attackerIp)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"email":"victim@example.com","password":"wrongpassword"}
+                                    """))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // 21st request within the same minute from the same IP is blocked with HTTP 429
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/auth/login")
+                        .header("X-Forwarded-For", attackerIp)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"victim@example.com","password":"wrongpassword"}
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.status").value(429));
+    }
 }
 
