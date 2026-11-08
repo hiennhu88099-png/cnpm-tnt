@@ -131,7 +131,7 @@ export default function SePayPaymentPage() {
       .catch(() => {});
   }, [targetKey, refCode, amount, subtotalParam, discountParam, couponParam]);
 
-  // 3. Tự động kiểm tra trạng thái đơn hàng mỗi 3 giây (tự hoàn tất ngay khi Webhook báo tiền về)
+  // 3. Tự động kiểm tra trạng thái đơn hàng mỗi 2 giây (tự kích hoạt khóa học ngay khi nhận được tiền)
   useEffect(() => {
     if (status !== 'WAITING' || !refCode || !targetKey) return undefined;
     const poll = setInterval(() => {
@@ -152,7 +152,7 @@ export default function SePayPaymentPage() {
           }
         })
         .catch(() => {});
-    }, 3000);
+    }, 2000);
     return () => clearInterval(poll);
   }, [status, refCode, targetKey, primaryId, amount, navigate]);
 
@@ -321,15 +321,34 @@ export default function SePayPaymentPage() {
 
               {status === 'WAITING' && (
                 <div className="sepay-actions">
-                  <button
-                    type="button"
-                    disabled={confirming}
-                    onClick={handleConfirmTransfer}
-                    className="sepay-confirm-btn"
-                  >
-                    <Icon name="checkCircle" size={18} />
-                    <span>{confirming ? 'Đang kiểm tra giao dịch...' : 'Tôi đã chuyển khoản (Xác nhận ngay)'}</span>
-                  </button>
+                  {/* Khung trạng thái Tự động kích hoạt khi nhận tiền qua VietQR */}
+                  <div className="sepay-auto-listen-card">
+                    <div className="sepay-auto-listen-header">
+                      <span className="sepay-live-dot" />
+                      <span className="sepay-auto-listen-title">Tự động kích hoạt sau khi quét mã</span>
+                    </div>
+                    <p className="sepay-auto-listen-desc">
+                      Sau khi bạn quét mã QR và chuyển khoản thành công, hệ thống sẽ <strong>tự động mở khóa khóa học ngay lập tức</strong> mà không cần bạn phải bấm bất kỳ nút xác nhận nào.
+                    </p>
+                    <div className="sepay-auto-listen-indicator">
+                      <span className="sepay-spinner" />
+                      <span>Hệ thống đang tự động lắng nghe giao dịch thời gian thực...</span>
+                    </div>
+                  </div>
+
+                  {/* Nút hỗ trợ mô phỏng dành cho Demo / Kiểm thử khi chạy localhost */}
+                  <div className="sepay-demo-hint-box">
+                    <button
+                      type="button"
+                      disabled={confirming}
+                      onClick={handleConfirmTransfer}
+                      className="sepay-demo-btn"
+                      title="Sử dụng khi thuyết trình / chấm điểm trên máy local không có kết nối webhook từ Internet"
+                    >
+                      <Icon name="zap" size={14} />
+                      <span>{confirming ? 'Đang mô phỏng giao dịch...' : '⚡ Mô phỏng chuyển tiền thành công (Dành cho Test / Demo)'}</span>
+                    </button>
+                  </div>
 
                   <button
                     type="button"

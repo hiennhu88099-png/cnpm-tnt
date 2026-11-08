@@ -1,4 +1,4 @@
-package com.onlinecourse.backend;
+    package com.onlinecourse.backend;
 
 import com.onlinecourse.backend.entity.*;
 import org.junit.jupiter.api.Test;
@@ -182,7 +182,8 @@ class CourseControllerTest extends CourseApiTestSupport {
 
     @Test
     void publicDetail_ofCourseInInactiveCategory_returns404() throws Exception {
-        Course course = saveCourse(saveCategory("Legacy", CategoryStatus.INACTIVE), "Old", CourseStatus.PUBLISHED, "100");
+        Course course = saveCourse(saveCategory("Legacy", CategoryStatus.INACTIVE), "Old", CourseStatus.PUBLISHED,
+                "100");
 
         getPublic("/api/courses/" + course.getId()).andExpect(status().isNotFound());
     }
@@ -280,7 +281,8 @@ class CourseControllerTest extends CourseApiTestSupport {
     @Test
     void create_withOriginalPrice_returnsIt() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
-        String json = validCourseJson(java.getId()).replace("\"price\":199000", "\"price\":199000,\"originalPrice\":499000");
+        String json = validCourseJson(java.getId()).replace("\"price\":199000",
+                "\"price\":199000,\"originalPrice\":499000");
 
         postAs(adminToken(), URL, json)
                 .andExpect(status().isCreated())
@@ -290,7 +292,8 @@ class CourseControllerTest extends CourseApiTestSupport {
     @Test
     void create_withOriginalPriceBelowPrice_returns400() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
-        String json = validCourseJson(java.getId()).replace("\"price\":199000", "\"price\":199000,\"originalPrice\":99000");
+        String json = validCourseJson(java.getId()).replace("\"price\":199000",
+                "\"price\":199000,\"originalPrice\":99000");
 
         postAs(adminToken(), URL, json)
                 .andExpect(status().isBadRequest())
@@ -300,7 +303,8 @@ class CourseControllerTest extends CourseApiTestSupport {
     @Test
     void create_withNegativeOriginalPrice_returns400() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
-        String json = validCourseJson(java.getId()).replace("\"price\":199000", "\"price\":199000,\"originalPrice\":-5");
+        String json = validCourseJson(java.getId()).replace("\"price\":199000",
+                "\"price\":199000,\"originalPrice\":-5");
 
         postAs(adminToken(), URL, json)
                 .andExpect(status().isBadRequest())
@@ -339,7 +343,8 @@ class CourseControllerTest extends CourseApiTestSupport {
     void update_canPublishCourse() throws Exception {
         Category java = saveCategory("Java", CategoryStatus.ACTIVE);
         Course course = saveCourse(java, "Draft", CourseStatus.DRAFT, "100");
-        String json = validCourseJson(java.getId()).replace("\"duration\":600", "\"duration\":600,\"status\":\"PUBLISHED\"");
+        String json = validCourseJson(java.getId()).replace("\"duration\":600",
+                "\"duration\":600,\"status\":\"PUBLISHED\"");
 
         putAs(adminToken(), URL + "/" + course.getId(), json)
                 .andExpect(status().isOk())
