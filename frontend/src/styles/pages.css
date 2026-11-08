@@ -2257,19 +2257,20 @@
 }
 
 .sepay-amount-label {
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   color: var(--color-text-muted);
 }
 
 .sepay-amount-value {
   margin-top: 4px;
   font-size: 2.25rem;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--color-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
 }
 
 .sepay-copy-list {
@@ -2293,23 +2294,25 @@
 }
 
 .sepay-copy-label {
-  font-size: 0.68rem;
-  font-weight: 800;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-subtle);
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
 }
 
 .sepay-copy-value {
-  margin-top: 2px;
-  font-size: var(--text-sm);
-  font-weight: 800;
+  margin-top: 3px;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: var(--color-text);
   word-break: break-all;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
 }
 
 .sepay-copy-value.is-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  letter-spacing: 0.02em;
 }
 
 .sepay-copy-btn {
@@ -2325,6 +2328,7 @@
   gap: 6px;
   cursor: pointer;
   flex-shrink: 0;
+  font-family: inherit;
 }
 
 .sepay-copy-btn.is-copied {
@@ -2368,11 +2372,12 @@
 }
 
 .sepay-auto-listen-card {
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
-  border: 1px solid rgba(16, 185, 129, 0.28);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.06);
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(37, 99, 235, 0.05) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.32);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.06);
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
 }
 
 .sepay-auto-listen-header {
@@ -2408,17 +2413,17 @@
 }
 
 .sepay-auto-listen-title {
-  font-size: 0.88rem;
-  font-weight: 800;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: #065f46;
   letter-spacing: -0.01em;
 }
 
 .sepay-auto-listen-desc {
   margin: 0 0 10px 0;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: #475569;
 }
 
 .sepay-auto-listen-desc strong {
@@ -2430,9 +2435,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #059669;
 }
 
 .sepay-demo-hint-box {
@@ -2442,47 +2447,25 @@
 
 .sepay-demo-btn {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px dashed rgba(99, 102, 241, 0.4);
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 1px dashed rgba(99, 102, 241, 0.45);
   background: rgba(99, 102, 241, 0.05);
   color: #4f46e5;
-  font-size: 0.74rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  font-family: inherit;
   transition: all 0.2s ease;
 }
 
 .sepay-demo-btn:hover:not(:disabled) {
   background: rgba(99, 102, 241, 0.12);
   border-color: #6366f1;
-}
-
-.sepay-confirm-btn {
-  width: 100%;
-  padding: 16px 20px;
-  border-radius: 18px;
-  border: none;
-  background: var(--color-primary);
-  color: #ffffff;
-  font-size: 0.85rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 14px 28px -10px rgba(37, 99, 235, 0.45);
-}
-
-.sepay-confirm-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
 }
 
 .sepay-cancel-btn {
@@ -2492,10 +2475,10 @@
   border: 1px solid rgba(244, 63, 94, 0.25);
   background: rgba(244, 63, 94, 0.06);
   color: #e11d48;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: inherit;
   cursor: pointer;
 }
 

@@ -36,7 +36,7 @@ public class ShopService {
     @Value("${app.payment.bank-code:MB}")
     private String paymentBankCode;
 
-    @Value("${app.payment.bank-name:MB Bank (Ngân hàng Quân Đội)}")
+    @Value("${app.payment.bank-name:MB Bank (Ng\u00e2n h\u00e0ng Qu\u00e2n \u0110\u1ed9i)}")
     private String paymentBankName;
 
     @Value("${app.payment.account-number:0000012345678}")
@@ -54,12 +54,25 @@ public class ShopService {
     public Map<String, Object> getPaymentConfig() {
         Map<String, Object> cfg = new LinkedHashMap<>();
         cfg.put("bankCode", paymentBankCode);
-        cfg.put("bankName", paymentBankName);
+        cfg.put("bankName", sanitizeUtf8(paymentBankName));
         cfg.put("accountNumber", paymentAccountNumber);
         cfg.put("accountHolder", paymentAccountHolder);
         cfg.put("transferPrefix", paymentTransferPrefix);
         cfg.put("webhookConfigured", paymentWebhookSecret != null && !paymentWebhookSecret.isBlank());
         return cfg;
+    }
+
+    private String sanitizeUtf8(String text) {
+        if (text == null || text.isBlank()) {
+            return text;
+        }
+        if (text.contains("Ã") || text.contains("Ä") || text.contains("á»") || text.contains("Â")) {
+            try {
+                return new String(text.getBytes(java.nio.charset.StandardCharsets.ISO_8859_1), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception ignored) {
+            }
+        }
+        return text;
     }
 
     // =========================================================================

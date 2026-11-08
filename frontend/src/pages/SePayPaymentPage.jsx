@@ -15,6 +15,26 @@ const FALLBACK_BANK_INFO = {
   transferPrefix: 'EDUHUB',
 };
 
+// Chuẩn hóa và khắc phục triệt để lỗi ký tự tiếng Việt UTF-8 (mojibake)
+function cleanBankName(name) {
+  if (!name) return FALLBACK_BANK_INFO.bankName;
+  if (name.includes('Ã') || name.includes('Ä') || name.includes('á»') || name.includes('Â')) {
+    try {
+      const bytes = Uint8Array.from(name, (c) => c.charCodeAt(0));
+      const decoded = new TextDecoder('utf-8').decode(bytes);
+      if (decoded && !decoded.includes('\uFFFD')) {
+        return decoded;
+      }
+    } catch {
+      // fallback
+    }
+    if (name.toUpperCase().includes('MB')) {
+      return 'MB Bank (Ngân hàng Quân Đội)';
+    }
+  }
+  return name;
+}
+
 function CopyRow({ label, value, mono = false }) {
   const [copied, setCopied] = useState(false);
 
@@ -102,7 +122,7 @@ export default function SePayPaymentPage() {
         if (!active || !cfg) return;
         setBankInfo({
           bankCode: cfg.bankCode || FALLBACK_BANK_INFO.bankCode,
-          bankName: cfg.bankName || FALLBACK_BANK_INFO.bankName,
+          bankName: cleanBankName(cfg.bankName) || FALLBACK_BANK_INFO.bankName,
           accountNumber: cfg.accountNumber || FALLBACK_BANK_INFO.accountNumber,
           accountHolder: cfg.accountHolder || FALLBACK_BANK_INFO.accountHolder,
           transferPrefix: cfg.transferPrefix || FALLBACK_BANK_INFO.transferPrefix,
