@@ -84,7 +84,7 @@ class CourseControllerTest extends CourseApiTestSupport {
                 .andExpect(jsonPath("$.content[0].originalPrice").value(300))
                 .andExpect(jsonPath("$.content[0].lessonCount").value(2))
                 .andExpect(jsonPath("$.content[0].averageRating").doesNotExist())
-                .andExpect(jsonPath("$.content[0].reviewCount").doesNotExist())
+                .andExpect(jsonPath("$.content[0].reviewCount").value(0))
                 .andExpect(jsonPath("$.content[1].title").value("Empty"))
                 .andExpect(jsonPath("$.content[1].lessonCount").value(0));
     }
